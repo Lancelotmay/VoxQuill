@@ -1,0 +1,235 @@
+/* Main Window Background */
+QMainWindow, QDialog {
+    background: transparent;
+}
+
+QWidget {
+    color: #3C3C43;
+    font-family: "Inter", "SF Pro Display", "Segoe UI", sans-serif;
+    font-size: 13px;
+}
+
+/* The primary container */
+QWidget#SurfaceFrame {
+    background: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+}
+
+/* Header Bar Styling */
+QWidget#HeaderBar {
+    background: transparent;
+}
+
+/* Tooltip Styling */
+QToolTip {
+    background: #1C1C1E;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+/* Global Widget Rounding */
+QPushButton, QComboBox, QTextEdit, QScrollArea, QProgressBar {
+    border-radius: 8px;
+}
+
+/* Input Area */
+QTextEdit {
+    background: transparent;
+    color: #1C1C1E;
+    border: none;
+    padding: 8px;
+    font-size: 14px;
+    selection-background-color: #007AFF;
+    selection-color: #FFFFFF;
+}
+
+QWidget#InputContainer {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+/* Clean Button Styles */
+QPushButton {
+    height: 28px;
+    padding: 0 10px;
+    background: transparent;
+    color: #3C3C43;
+    border: none;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+QPushButton:pressed {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Primary Action / Record Button */
+QPushButton#RecordButton {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+QPushButton#RecordButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+QPushButton#RecordButton:pressed {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Ghost Buttons for Header */
+QPushButton#ModelButton, 
+QPushButton#CommandButton, 
+QPushButton#CloseButton,
+QPushButton#MoreButton {
+    background: transparent;
+    color: rgba(60, 60, 67, 0.7);
+    border-radius: 6px;
+}
+
+QPushButton#ModelButton:hover, 
+QPushButton#CommandButton:hover, 
+QPushButton#CloseButton:hover,
+QPushButton#MoreButton:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #000000;
+}
+
+QPushButton#ModelButton {
+    font-weight: 600;
+    color: #007AFF;
+    text-align: left;
+    padding-left: 8px;
+}
+
+QPushButton#CloseButton {
+    padding: 0;
+    font-size: 16px;
+    color: rgba(60, 60, 67, 0.4);
+}
+
+QPushButton#CloseButton:hover {
+    background: #FF3B30;
+    color: #FFFFFF;
+}
+
+/* Menu Styling (For the "More" button replacement) */
+QMenu {
+    background: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background: #007AFF;
+    color: #FFFFFF;
+}
+
+/* Dialog Surface */
+QWidget#Surface {
+    background: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+}
+
+/* Scroll Area for Models */
+QScrollArea {
+    background: transparent;
+    border: none;
+}
+
+QWidget#RowsContainer {
+    background: transparent;
+}
+
+/* Model Row - Clear Boundaries */
+QWidget#ModelRow {
+    background: #FFFFFF;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+}
+
+QWidget#ModelRow:hover {
+    border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+QWidget#ModelRow[selected="true"] {
+    border: 2px solid #007AFF;
+    background: rgba(0, 122, 255, 0.02);
+}
+
+/* Specific button overrides for dialog footers */
+QPushButton#DialogPrimary {
+    background: #007AFF;
+    color: #FFFFFF;
+    min-width: 80px;
+}
+
+QPushButton#DialogGhost {
+    background: rgba(0, 0, 0, 0.05);
+    color: #3C3C43;
+    min-width: 80px;
+}
+
+/* Progress bar for model downloading etc */
+QProgressBar {
+    height: 6px;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+QProgressBar::chunk {
+    background: #007AFF;
+    border-radius: 3px;
+}
+
+
+
+/* Language Selector Tags */
+QLabel#LanguageSelectorLabel {
+    font-weight: 600;
+    color: rgba(60, 60, 67, 0.4);
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+QPushButton#LanguageTag {
+    height: 24px;
+    padding: 0 12px;
+    background: rgba(0, 0, 0, 0.05);
+    color: #3C3C43;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QPushButton#LanguageTag:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+QPushButton#LanguageTag:checked {
+    background: #007AFF;
+    color: #FFFFFF;
+    border: 1px solid #007AFF;
+}
+
+QPushButton#LanguageTag:checked:hover {
+    background: #0062CC;
+}

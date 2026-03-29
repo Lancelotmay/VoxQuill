@@ -1,0 +1,155 @@
+{
+  "active_model": "isensevoice_small_int8",
+  "global_languages": [
+    "zh"
+  ],
+  "models": {
+    "paraformer_zh_en": {
+      "display_name": "Paraformer ZH-EN",
+      "description": "Streaming bilingual Chinese-English model with punctuation.",
+      "pipeline": "streaming_online",
+      "recognizer_kind": "paraformer",
+      "sample_rate": 16000,
+      "feature_dim": 80,
+      "paths": {
+        "encoder": "models/sherpa-onnx-streaming-paraformer-bilingual-zh-en/encoder.int8.onnx",
+        "decoder": "models/sherpa-onnx-streaming-paraformer-bilingual-zh-en/decoder.int8.onnx",
+        "tokens": "models/sherpa-onnx-streaming-paraformer-bilingual-zh-en/tokens.txt"
+      },
+      "vad": {
+        "enabled": true,
+        "model": "models/silero_vad.onnx",
+        "threshold": 0.5,
+        "min_silence_duration": 0.5,
+        "min_speech_duration": 0.25,
+        "buffer_size_in_seconds": 60
+      },
+      "punct": {
+        "enabled": true,
+        "model": "models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/model.onnx",
+        "num_threads": 2
+      },
+      "endpoint": {
+        "enabled": true,
+        "rule1_min_trailing_silence": 2.4,
+        "rule2_min_trailing_silence": 1.2,
+        "rule3_min_utterance_length": 30.0
+      },
+      "decode": {
+        "num_threads": 4,
+        "decoding_method": "greedy_search"
+      },
+      "downloads": [
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
+        },
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2",
+          "extract": true
+        },
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.tar.bz2",
+          "extract": true
+        }
+      ]
+    },
+    "isensevoice_small_fp32": {
+      "display_name": "iSenseVoiceSmall FP32",
+      "description": "Multilingual offline VAD + SenseVoiceSmall FP32 model.",
+      "pipeline": "vad_offline",
+      "recognizer_kind": "sense_voice",
+      "sample_rate": 16000,
+      "preview_delay": 0.2,
+      "paths": {
+        "model": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.onnx",
+        "tokens": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+        "hr_rule_fsts": "",
+        "hr_lexicon": ""
+      },
+      "vad": {
+        "enabled": true,
+        "model": "models/silero_vad.onnx",
+        "threshold": 0.5,
+        "min_silence_duration": 0.7,
+        "min_speech_duration": 0.25,
+        "max_speech_duration": 8.0,
+        "buffer_size_in_seconds": 100
+      },
+      "punct": {
+        "enabled": true,
+        "model": "models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/model.onnx",
+        "num_threads": 2
+      },
+      "decode": {
+        "num_threads": 2,
+        "use_itn": true
+      },
+      "downloads": [
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
+        },
+        {
+          "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.onnx",
+          "dest": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+        },
+        {
+          "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt",
+          "dest": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+        },
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.tar.bz2",
+          "extract": true
+        }
+      ]
+    },
+    "isensevoice_small_int8": {
+      "display_name": "iSenseVoiceSmall INT8",
+      "description": "Multilingual offline VAD + SenseVoiceSmall INT8 model.",
+      "pipeline": "vad_offline",
+      "recognizer_kind": "sense_voice",
+      "sample_rate": 16000,
+      "preview_delay": 0.2,
+      "paths": {
+        "model": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx",
+        "tokens": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt",
+        "hr_rule_fsts": "",
+        "hr_lexicon": ""
+      },
+      "vad": {
+        "enabled": true,
+        "model": "models/silero_vad.onnx",
+        "threshold": 0.5,
+        "min_silence_duration": 0.7,
+        "min_speech_duration": 0.25,
+        "max_speech_duration": 8.0,
+        "buffer_size_in_seconds": 100
+      },
+      "punct": {
+        "enabled": true,
+        "model": "models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/model.onnx",
+        "num_threads": 2
+      },
+      "decode": {
+        "num_threads": 2,
+        "use_itn": true
+      },
+      "downloads": [
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
+        },
+        {
+          "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx",
+          "dest": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+        },
+        {
+          "url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt",
+          "dest": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+        },
+        {
+          "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.tar.bz2",
+          "extract": true
+        }
+      ]
+    }
+  }
+}

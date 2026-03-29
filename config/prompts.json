@@ -1,0 +1,42 @@
+{
+    "summary": {
+        "label": "Summary",
+        "command": "//s",
+        "text": "Please provide a concise summary of the following text, highlighting the key points and conclusions:\n\n"
+    },
+    "translate": {
+        "label": "Translate",
+        "command": "//t",
+        "text": "Please translate the following text into the specified language (defaulting to English if not specified):\n\n"
+    },
+    "explain": {
+        "label": "Explain",
+        "command": "//e",
+        "text": "Please explain the following concept or code snippet in simple terms, providing examples where necessary:\n\n"
+    },
+    "fix": {
+        "label": "Fix/Improve",
+        "command": "//fix",
+        "text": "Please review and fix any errors in the following text, or improve its clarity and flow:\n\n"
+    },
+    "continue": {
+        "label": "Continue",
+        "command": "//c",
+        "text": "Please continue where you left off, elaborating further or providing more details as necessary:\n\n"
+    },
+    "proofread": {
+        "label": "Proofread",
+        "command": "//p",
+        "text": "Please proofread the following text for grammar, spelling, and punctuation errors:\n\n"
+    },
+    "translate_en": {
+        "label": "Translate to English",
+        "command": "//en",
+        "text": "Please translate the following text into natural-sounding English:\n\n"
+    },
+    "translate_zh": {
+        "label": "Translate to Chinese",
+        "command": "//zh",
+        "text": "Please translate the following text into natural-sounding Chinese:\n\n"
+    }
+}
