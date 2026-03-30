@@ -20,7 +20,7 @@
       "vad": {
         "enabled": true,
         "model": "models/silero_vad.onnx",
-        "threshold": 0.5,
+        "threshold": 0.4,
         "min_silence_duration": 0.5,
         "min_speech_duration": 0.25,
         "buffer_size_in_seconds": 60
@@ -70,7 +70,7 @@
       "vad": {
         "enabled": true,
         "model": "models/silero_vad.onnx",
-        "threshold": 0.5,
+        "threshold": 0.4,
         "min_silence_duration": 0.7,
         "min_speech_duration": 0.25,
         "max_speech_duration": 8.0,
@@ -119,7 +119,7 @@
       "vad": {
         "enabled": true,
         "model": "models/silero_vad.onnx",
-        "threshold": 0.5,
+        "threshold": 0.4,
         "min_silence_duration": 0.7,
         "min_speech_duration": 0.25,
         "max_speech_duration": 8.0,
