@@ -13,6 +13,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QComboBox,
+    QLineEdit,
+    QFileDialog,
+    QCheckBox,
 )
 from PyQt6.QtGui import QCursor
 
@@ -24,6 +27,10 @@ from core.asr_config import (
     load_asr_config,
     get_global_languages,
     set_global_languages,
+    get_history_dir,
+    set_history_dir,
+    get_history_enabled,
+    set_history_enabled,
 )
 from ui.style import apply_surface_shadow
 
@@ -289,6 +296,42 @@ class ModelManagerDialog(QDialog):
         self.lang_selector = LanguageSelector()
         self.lang_selector.languages_changed.connect(self._on_global_langs_changed)
         layout.addWidget(self.lang_selector)
+        history_widget = QWidget()
+        history_layout = QVBoxLayout(history_widget)
+        history_layout.setContentsMargins(0, 4, 0, 4)
+        history_layout.setSpacing(4)
+        
+        # 1. Enable Checkbox
+        self.history_enabled_check = QCheckBox("Enable History Logging")
+        self.history_enabled_check.setChecked(get_history_enabled())
+        self.history_enabled_check.toggled.connect(set_history_enabled)
+        history_layout.addWidget(self.history_enabled_check)
+        
+        # 2. Path Horizontal Row
+        history_path_row = QWidget()
+        history_path_layout = QHBoxLayout(history_path_row)
+        history_path_layout.setContentsMargins(0, 0, 0, 0)
+        history_path_layout.setSpacing(8)
+        
+        target_label = QLabel("Save to:")
+        target_label.setObjectName("LanguageSelectorLabel")
+        history_path_layout.addWidget(target_label)
+        
+        self.history_path_edit = QLineEdit()
+        self.history_path_edit.setReadOnly(True)
+        self.history_path_edit.setText(get_history_dir())
+        self.history_path_edit.setObjectName("HistoryPathEdit")
+        history_path_layout.addWidget(self.history_path_edit, 1)
+        
+        browse_btn = QPushButton("Browse")
+        browse_btn.setObjectName("DialogGhost")
+        browse_btn.setFixedWidth(80)
+        browse_btn.clicked.connect(self._on_browse_history_dir)
+        history_path_layout.addWidget(browse_btn)
+
+        history_layout.addWidget(history_path_row)
+        
+        layout.addWidget(history_widget)
         layout.addSpacing(4)
 
         self.scroll_area = QScrollArea()
@@ -368,6 +411,14 @@ class ModelManagerDialog(QDialog):
     def _on_global_langs_changed(self, langs):
         set_global_languages(langs)
         self.status_label.setText(f"Languages: {', '.join(langs)}")
+
+    def _on_browse_history_dir(self):
+        current_dir = self.history_path_edit.text()
+        new_dir = QFileDialog.getExistingDirectory(self, "Select History Directory", current_dir)
+        if new_dir:
+            self.history_path_edit.setText(new_dir)
+            set_history_dir(new_dir)
+            self.status_label.setText(f"History switched to: {new_dir}")
 
     def _save_selection(self):
         try:

@@ -1,13 +1,13 @@
 {
+    "chat_summary_3in1": {
+        "label": "SumChat",
+        "command": "//sum",
+        "text": "You are summarizing an AI conversation for future reuse.  \nProduce three sections:  \n1. Knowledge extracted from the discussion  \n2. Current conversation state  \n3. Task status  \nRules:  \n- Remove conversational filler  \n- Preserve important facts and reasoning  \n- Keep the output concise but complete  \nOutput format:  \n#### Knowledge  \n##### Key Concepts  \n- concept  \n##### Important Facts  \n- fact  \n##### Insights  \n- insight  \n---  \n#### Conversation State  \nUser Goal:  \n...  \nKey Context:  \n...  \nMain Discussion Points:  \n- point  \nOpen Questions:  \n- question  \n---  \n#### Task Status  \nGoal:  \n...  \nCompleted Tasks:  \n- task  \nPending Tasks:  \n- task  \nNext Steps:  \n- action  \nConversation:  \n{chat_history}"
+    },
     "summary": {
         "label": "Summary",
         "command": "//s",
         "text": "Please provide a concise summary of the following text, highlighting the key points and conclusions:\n\n"
-    },
-    "translate": {
-        "label": "Translate",
-        "command": "//t",
-        "text": "Please translate the following text into the specified language (defaulting to English if not specified):\n\n"
     },
     "explain": {
         "label": "Explain",
@@ -15,7 +15,7 @@
         "text": "Please explain the following concept or code snippet in simple terms, providing examples where necessary:\n\n"
     },
     "fix": {
-        "label": "Fix/Improve",
+        "label": "Improve",
         "command": "//fix",
         "text": "Please review and fix any errors in the following text, or improve its clarity and flow:\n\n"
     },
@@ -30,13 +30,73 @@
         "text": "Please proofread the following text for grammar, spelling, and punctuation errors:\n\n"
     },
     "translate_en": {
-        "label": "Translate to English",
+        "label": "ToEn",
         "command": "//en",
         "text": "Please translate the following text into natural-sounding English:\n\n"
     },
     "translate_zh": {
-        "label": "Translate to Chinese",
+        "label": "ToZh",
         "command": "//zh",
         "text": "Please translate the following text into natural-sounding Chinese:\n\n"
+    },
+    "chat_knowledge": {
+        "label": "Knowledge",
+        "command": "//kc",
+        "text": "用中文总结. 如果有多个topic, 分开来各自总结. \nYou are extracting reusable knowledge from an AI conversation.  \nGoal:  \nConvert the conversation into a concise knowledge card that can be reused later.  \nRules:  \n- Remove conversational filler  \n- Keep definitions, explanations, methods, and conclusions  \n- Preserve important numbers, entities, and relationships  \n- Rewrite information clearly  \n- Do not include irrelevant discussion\n\nOutput format (Markdown):  \n#### Topic  \n##### Key Concepts  \n- concept: explanation  \n##### Important Facts  \n- fact  \n##### Methods / Procedures  \n- step or method  \n##### Insights  \n- key takeaways  \n##### References Mentioned  \n- sources, tools, frameworks  \nConversation:  \n{chat_history}"
+    },
+    "chat_state": {
+        "label": "State",
+        "command": "//state",
+        "text": "You are summarizing a conversation so that another AI can continue it.  \nExtract the current conversation state.  \nFocus only on information necessary to resume the discussion.  \nOutput format:  \nUser Goal:  \nWhat the user ultimately wants.  \nUser Context:  \nImportant background facts about the user or situation.  \nKey Points Discussed:  \n- important idea  \n- important idea  \nDecisions or Conclusions:  \n- decisions made  \nOpen Questions:  \n- unresolved questions  \nConversation:  \n{chat_history}"
+    },
+    "chat_task": {
+        "label": "Tasks",
+        "command": "//task",
+        "text": "You are extracting tasks from an AI conversation.  \nIdentify all tasks mentioned or implied.  \nFor each task determine:  \n- whether it is completed  \n- whether it is still pending  \nOutput format:  \nGoal:  \nOverall objective of the conversation.  \nCompleted Tasks:  \n- task  \nPending Tasks:  \n- task  \nSuggested Next Steps:  \n- next action  \nConversation:  \n{chat_history}"
+    },
+    "persona_con": {
+        "label": "@Conductor",
+        "command": "//@conductor",
+        "text": "### [SYSTEM] ROLE: @Conductor\n**Objective**: Orchestrate a professional decision flow in a SINGLE response using the following sequence:\n\n1. **@Analysis**: Understand core problem via causal reasoning/assumptions. No conclusions.\n2. **@Strategy**: Assess systemic effects (incentives, 2nd-order effects). No execution details.\n3. **@Challenge**: Attack assumptions and surface edge cases. No conciliatory framing.\n4. **@Reality**: Evaluate feasibility (costs, risks, execution order).\n5. **@Decision**: Provide ONE clear final recommendation with rationale.\n\n--- \n**TASK**: "
+    },
+    "persona_ana": {
+        "label": "@Analysis",
+        "command": "//@analysis",
+        "text": "### [SYSTEM] ROLE: @Analysis\n**Objective**: Understand the problem through causal reasoning and constraints.\n**Constraint**: Strictly no conclusions or recommendations.\n**TASK**: "
+    },
+    "persona_str": {
+        "label": "@Strategy",
+        "command": "//@strategy",
+        "text": "### [SYSTEM] ROLE: @Strategy\n**Objective**: Assess systemic effects, incentives, and second-order effects.\n**Constraint**: No execution details.\n**TASK**: "
+    },
+    "persona_cha": {
+        "label": "@Challenge",
+        "command": "//@challenge",
+        "text": "### [SYSTEM] ROLE: @Challenge\n**Objective**: Attack assumptions and surface edge cases as an opposing voice.\n**Constraint**: Avoid balanced or conciliatory framing.\n**TASK**: "
+    },
+    "persona_rea": {
+        "label": "@Reality",
+        "command": "//@reality",
+        "text": "### [SYSTEM] ROLE: @Reality\n**Objective**: Evaluate feasibility based on costs, risks, and execution order.\n**Constraint**: Avoid abstract theory.\n**TASK**: "
+    },
+    "persona_dec": {
+        "label": "@Decision",
+        "command": "//@decision",
+        "text": "### [SYSTEM] ROLE: @Decision\n**Objective**: Make the final call. Provide one clear recommendation with rationale.\n**Constraint**: No multiple options or open discussion.\n**TASK**: "
+    },
+    "persona_wri": {
+        "label": "@Writer",
+        "command": "//@writer",
+        "text": "### [SYSTEM] ROLE: @Writer\n**Objective**: Produce final-form text only.\n**Constraint**: Strictly no analysis or meta-explanation.\n**TASK**: "
+    },
+    "persona_exp": {
+        "label": "@Explainer",
+        "command": "//@explainer",
+        "text": "### [SYSTEM] ROLE: @Explainer\n**Objective**: Explain clearly and progressively without assuming prior knowledge.\n**TASK**: "
+    },
+    "persona_ast": {
+        "label": "@Assistant",
+        "command": "//@assistant",
+        "text": "### [SYSTEM] ROLE: @Assistant\n**Objective**: Provide pragmatic, low-friction, context-aware assistance.\n**TASK**: "
     }
 }

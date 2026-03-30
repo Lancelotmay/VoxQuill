@@ -177,7 +177,8 @@ class VadOfflineASRWorker(BaseASRWorker):
         text = stream.result.text.strip()
         
         # Defensive: Strip SenseVoice internal tags if present
-        text = re.sub(r"<\|.*?\|>", "", text).strip()
+        # We strip both <|zh|>... style tags and [noise] style event tags.
+        text = re.sub(r"<\|.*?\|>|\[.*?\]", "", text).strip()
         
         # Check if text already has punctuation from SenseVoice
         has_punct = any(c in text for c in "。，？！.?!,")
@@ -191,7 +192,9 @@ class VadOfflineASRWorker(BaseASRWorker):
         return text
 
     def _flush(self, force=False):
-        if force and len(self.buffer) > 0:
+        # Prevent hallucination from silence lookback buffer: 
+        # Only decode during flush if speech has actually been detected.
+        if force and self.started and len(self.buffer) > 0:
             text = self._decode_samples(self.buffer)
             if text:
                 self._log(f"[FINAL] {text}")

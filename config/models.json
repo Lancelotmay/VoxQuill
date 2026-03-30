@@ -1,7 +1,8 @@
 {
   "active_model": "isensevoice_small_int8",
   "global_languages": [
-    "zh"
+    "zh",
+    "en"
   ],
   "models": {
     "paraformer_zh_en": {
@@ -151,5 +152,7 @@
         }
       ]
     }
-  }
+  },
+  "history_enabled": true,
+  "history_dir": "/home/lance/00.LSync/00.1Bujo/voxnote"
 }

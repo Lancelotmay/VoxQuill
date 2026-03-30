@@ -13,11 +13,12 @@ from pynput.keyboard import Controller, Key
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel, QApplication, QMenu
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QObject, QTimer, QSize, QEvent
 from PyQt6.QtGui import QShortcut, QKeySequence, QTextCursor, QCursor, QIcon
-from core.asr_config import list_available_models, load_asr_config
+from core.asr_config import list_available_models, load_asr_config, get_history_dir, get_history_enabled
 from core.logging_utils import log
 from ui.style import apply_surface_shadow
 from ui.model_manager import ModelManagerDialog
 from core.path_utils import get_resource_path, get_config_path
+from datetime import datetime
 
 class AIInputBox(QMainWindow):
     request_stop_and_copy = pyqtSignal()
@@ -144,24 +145,24 @@ class AIInputBox(QMainWindow):
         
         header_layout.addSpacing(4)
 
-        # Direct shortcuts for top 6 commands
-        top_commands = list(self._prompts.items())[:6]
+        # Direct shortcuts for top 9 commands
+        top_commands = list(self._prompts.items())[:9]
         for p_id, p_data in top_commands:
-            btn = QPushButton(p_data["command"])
+            btn = QPushButton(p_data["label"])
             btn.setObjectName("CommandButton")
-            btn.setToolTip(p_data["label"])
+            btn.setToolTip(f"Command: {p_data['command']}")
             btn.clicked.connect(lambda checked, text=p_data["text"]: self._insert_prompt(text))
             header_layout.addWidget(btn)
         
         # Unified menu for additional commands
-        if len(self._prompts) > 6:
+        if len(self._prompts) > 9:
             self.more_button = QPushButton("More")
             self.more_button.setObjectName("MoreButton")
             
             self.menu = QMenu(self)
-            for p_id, p_data in list(self._prompts.items())[6:]:
-                action = self.menu.addAction(p_data["command"])
-                action.setToolTip(p_data["label"])
+            for p_id, p_data in list(self._prompts.items())[9:]:
+                action = self.menu.addAction(p_data["label"])
+                action.setToolTip(f"Command: {p_data['command']}")
                 action.triggered.connect(lambda checked, text=p_data["text"]: self._insert_prompt(text))
             
             self.more_button.setMenu(self.menu)
@@ -222,6 +223,43 @@ class AIInputBox(QMainWindow):
         else:
             self.copy_and_hide()
 
+    def _save_to_history(self, text):
+        if not get_history_enabled():
+            return
+            
+        try:
+            history_dir = get_history_dir()
+            if not os.path.exists(history_dir):
+                os.makedirs(history_dir, exist_ok=True)
+            
+            now = datetime.now()
+            # 1. Month-based filename: 2026-03vox.md
+            filename = f"{now.strftime('%Y-%m')}vox.md"
+            filepath = os.path.join(history_dir, filename)
+            
+            # 2. Date-based heading: #### 2026-03-30
+            today_heading = f"#### {now.strftime('%Y-%m-%d')}"
+            
+            # Check if we need to add the heading
+            add_heading = True
+            if os.path.exists(filepath):
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    if today_heading in content:
+                        add_heading = False
+            
+            with open(filepath, "a", encoding="utf-8") as f:
+                if add_heading:
+                    f.write(f"\n{today_heading}\n")
+                
+                # 3. New Format: ISO (No seconds) on its own line, no prefix for text
+                timestamp = now.isoformat(timespec='minutes')
+                f.write(f"\n{timestamp}\n{text}\n")
+                
+            log(f"UI: Saved to history: {filepath}")
+        except Exception as e:
+            log(f"UI: Error saving to history: {e}")
+
     def on_engine_finished(self):
         if self._pending_close:
             QTimer.singleShot(100, self.copy_and_hide)
@@ -234,6 +272,7 @@ class AIInputBox(QMainWindow):
             except: pass
             self.hide()
             QTimer.singleShot(200, lambda: self._simulate_paste())
+            self._save_to_history(text)
         else:
             self.hide()
         self.clear_text()

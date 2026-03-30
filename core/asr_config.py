@@ -10,7 +10,7 @@ import requests
 from core.path_utils import get_config_path, get_models_dir
 
 
-DEFAULT_CONFIG_PATH = get_config_path("asr_models.json")
+DEFAULT_CONFIG_PATH = get_config_path("models.json")
 MODELS_DIR = get_models_dir()
 _VALIDATION_CACHE = {}
 
@@ -252,6 +252,31 @@ def get_global_languages(path=DEFAULT_CONFIG_PATH):
 def set_global_languages(languages, path=DEFAULT_CONFIG_PATH):
     data = _load_config_data(path)
     data["global_languages"] = list(languages)
+    _save_config_data(data, path=path)
+
+
+def get_history_dir(path=DEFAULT_CONFIG_PATH):
+    data = _load_config_data(path)
+    # Default to ~/Documents/VoxQuill/History if not set
+    default_dir = os.path.join(os.path.expanduser("~"), "Documents", "VoxQuill", "History")
+    return data.get("history_dir", default_dir)
+
+
+def set_history_dir(dir_path, path=DEFAULT_CONFIG_PATH):
+    data = _load_config_data(path)
+    data["history_dir"] = dir_path
+    _save_config_data(data, path=path)
+
+
+def get_history_enabled(path=DEFAULT_CONFIG_PATH):
+    data = _load_config_data(path)
+    # Default to True
+    return data.get("history_enabled", True)
+
+
+def set_history_enabled(enabled, path=DEFAULT_CONFIG_PATH):
+    data = _load_config_data(path)
+    data["history_enabled"] = bool(enabled)
     _save_config_data(data, path=path)
 
 
