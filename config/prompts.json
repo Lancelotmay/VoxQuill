@@ -2,101 +2,102 @@
     "chat_summary_3in1": {
         "label": "SumChat",
         "command": "//sum",
-        "text": "You are summarizing an AI conversation for future reuse.  \nProduce three sections:  \n1. Knowledge extracted from the discussion  \n2. Current conversation state  \n3. Task status  \nRules:  \n- Remove conversational filler  \n- Preserve important facts and reasoning  \n- Keep the output concise but complete  \nOutput format:  \n#### Knowledge  \n##### Key Concepts  \n- concept  \n##### Important Facts  \n- fact  \n##### Insights  \n- insight  \n---  \n#### Conversation State  \nUser Goal:  \n...  \nKey Context:  \n...  \nMain Discussion Points:  \n- point  \nOpen Questions:  \n- question  \n---  \n#### Task Status  \nGoal:  \n...  \nCompleted Tasks:  \n- task  \nPending Tasks:  \n- task  \nNext Steps:  \n- action  \nConversation:  \n{chat_history}"
+        "text": "Summarize the conversation for future reuse.\n\nTask:\nProduce exactly three sections:\n1. Knowledge extracted from the discussion\n2. Current conversation state\n3. Task status\n\nCore rules:\n- Remove conversational filler, repetition, and politeness padding\n- Preserve important facts, reasoning, constraints, decisions, and unresolved issues\n- Separate explicit facts from inferred insights\n- Do not invent facts, motives, decisions, or tasks\n- If the conversation contains multiple clearly different topics, split them by topic within the relevant sections\n- Avoid repeating the same information across sections unless necessary for continuity\n- Keep the output concise but complete\n\nOutput format (Markdown):\n#### Knowledge\n##### Key Concepts\n- concept\n##### Important Facts\n- fact\n##### Insights\n- insight\n---\n#### Conversation State\nUser Goal:\n...\nKey Context:\n...\nMain Discussion Points:\n- point\nOpen Questions:\n- question\n---\n#### Task Status\nGoal:\n...\nCompleted Tasks:\n- task\nPending Tasks:\n- task\nNext Steps:\n- action"
     },
     "summary": {
-        "label": "Summary",
+        "label": "SumText",
         "command": "//s",
-        "text": "Please provide a concise summary of the following text, highlighting the key points and conclusions:\n\n"
+        "text": "Provide a concise summary of the following text.\n\nTask:\n- Extract the main points, important facts, and conclusions\n- Preserve technical terms, numbers, dates, named entities, and explicit conclusions when present\n- Remove minor examples, filler, repetition, and low-value detail unless necessary for meaning\n- Do not add interpretations that are not supported by the source text\n\nOutput requirements:\n- Write a compact summary in prose or bullets, whichever better fits the source\n- Keep the original meaning and level of certainty\n\nText:\n"
     },
     "explain": {
         "label": "Explain",
         "command": "//e",
-        "text": "Please explain the following concept or code snippet in simple terms, providing examples where necessary:\n\n"
+        "text": "Explain the following concept, text, or code clearly and progressively.\n\nTask:\n- Start from the core idea\n- Break the explanation into logical steps\n- Do not assume prior knowledge unless the input clearly indicates an expert audience\n- Preserve technical accuracy\n- Use examples only where they improve understanding\n- For code, explain what it does, how it works, and any important constraints or pitfalls\n\nOutput requirements:\n- Prefer short sections over long dense blocks\n- Define important terms when first used\n- Avoid unnecessary jargon, but do not remove essential technical meaning\n\nContent:\n"
     },
+    "zh": {
+        "label": "zh",
+        "command": "//zh",
+        "text": "使用中文回答"
+    },
+    
     "fix": {
         "label": "Improve",
         "command": "//fix",
-        "text": "Please review and fix any errors in the following text, or improve its clarity and flow:\n\n"
-    },
-    "continue": {
-        "label": "Continue",
-        "command": "//c",
-        "text": "Please continue where you left off, elaborating further or providing more details as necessary:\n\n"
+        "text": "Review the following text and improve it.\n\nTask priority:\n1. Correct grammar, spelling, punctuation, and obvious wording errors\n2. Improve clarity, flow, and readability\n3. Preserve the original meaning, intent, and key details\n\nCore rules:\n- Do not remove important content\n- Do not make the tone stronger, softer, more formal, or more casual unless the text itself requires it or the user requests it\n- Do not add new claims or information\n- Keep revisions proportionate: fix what needs fixing, but do not rewrite unnecessarily\n\nOutput requirements:\n- Return only the revised text\n\nText:\n\nStyle requirements:\n- Default: preserve original tone as much as possible\n- Optional tone: more formal / more natural / more concise / more polished\n- Optional rewrite level: minimal edits / moderate edits / stronger rewrite\n- Optional language: preserve original language unless explicitly requested otherwise"
     },
     "proofread": {
         "label": "Proofread",
         "command": "//p",
-        "text": "Please proofread the following text for grammar, spelling, and punctuation errors:\n\n"
+        "text": "Proofread the following text.\n\nTask:\n- Correct grammar, spelling, punctuation, capitalization, and obvious usage errors\n- Preserve wording, structure, tone, and meaning as much as possible\n- Do not rewrite for style unless a change is necessary to fix correctness\n\nOutput requirements:\n- Return only the corrected text\n\nText:\n"
     },
     "translate_en": {
         "label": "ToEn",
-        "command": "//en",
-        "text": "Please translate the following text into natural-sounding English:\n\n"
+        "command": "//toen",
+        "text": "Translate the following text into natural, accurate English.\n\nTask:\n- Preserve the original meaning, tone, level of formality, and important details\n- Keep technical terms, numbers, names, and domain-specific wording accurate\n- Prefer faithful translation over stylistic rewriting\n- If the source is ambiguous, preserve the ambiguity rather than over-interpreting\n\nOutput requirements:\n- Return only the translation\n\nText:\n\nStyle requirements:\n- Default: natural and faithful\n- Optional tone: more formal / more conversational / more businesslike / more native-sounding\n- Optional fidelity: closer to source / smoother English\n- Optional locale: international English / British English / American English"
     },
     "translate_zh": {
         "label": "ToZh",
-        "command": "//zh",
-        "text": "Please translate the following text into natural-sounding Chinese:\n\n"
+        "command": "//tozh",
+        "text": "Translate the following text into natural, accurate Chinese.\n\nTask:\n- Preserve the original meaning, tone, level of formality, and important details\n- Keep technical terms, numbers, names, and domain-specific wording accurate\n- Prefer faithful translation over stylistic rewriting\n- If the source is ambiguous, preserve the ambiguity rather than over-interpreting\n\nOutput requirements:\n- Return only the translation\n\nText:\n\nStyle requirements:\n- Default: natural and faithful\n- Optional tone: more formal / more conversational / more businesslike / more native-sounding\n- Optional fidelity: closer to source / smoother Chinese\n- Optional locale: Simplified Chinese / Traditional Chinese / Mainland style / Taiwan style if requested"
     },
     "chat_knowledge": {
         "label": "Knowledge",
         "command": "//kc",
-        "text": "用中文总结. 如果有多个topic, 分开来各自总结. \nYou are extracting reusable knowledge from an AI conversation.  \nGoal:  \nConvert the conversation into a concise knowledge card that can be reused later.  \nRules:  \n- Remove conversational filler  \n- Keep definitions, explanations, methods, and conclusions  \n- Preserve important numbers, entities, and relationships  \n- Rewrite information clearly  \n- Do not include irrelevant discussion\n\nOutput format (Markdown):  \n#### Topic  \n##### Key Concepts  \n- concept: explanation  \n##### Important Facts  \n- fact  \n##### Methods / Procedures  \n- step or method  \n##### Insights  \n- key takeaways  \n##### References Mentioned  \n- sources, tools, frameworks  \nConversation:  \n{chat_history}"
+        "text": "用中文总结。如果有多个区别很大的 topic，分开分别总结。\n\nYou are extracting reusable knowledge from an AI conversation and converting it into concise knowledge cards.\n\nGoal:\nCapture reusable definitions, explanations, methods, constraints, conclusions, and references from the conversation.\n\nCore rules:\n- Remove conversational filler and irrelevant discussion\n- Keep definitions, explanations, methods, conclusions, and important constraints\n- Preserve important numbers, entities, terms, and relationships\n- Rewrite clearly, but do not invent content\n- Separate explicit facts from inferred insights where useful\n- Omit any section that has no meaningful content\n- If topics are substantially different, create separate Topic sections\n\nOutput format (Markdown):\n#### Topic\n##### Key Concepts\n- concept: explanation\n##### Important Facts\n- fact\n##### Methods / Procedures\n- step or method\n##### Insights\n- key takeaway\n##### References Mentioned\n- source, tool, framework, or document explicitly mentioned in the conversation"
     },
     "chat_state": {
         "label": "State",
         "command": "//state",
-        "text": "You are summarizing a conversation so that another AI can continue it.  \nExtract the current conversation state.  \nFocus only on information necessary to resume the discussion.  \nOutput format:  \nUser Goal:  \nWhat the user ultimately wants.  \nUser Context:  \nImportant background facts about the user or situation.  \nKey Points Discussed:  \n- important idea  \n- important idea  \nDecisions or Conclusions:  \n- decisions made  \nOpen Questions:  \n- unresolved questions  \nConversation:  \n{chat_history}"
+        "text": "You are summarizing a conversation so that another AI can continue it effectively.\n\nTask:\nExtract only the current conversation state needed to resume the discussion.\n\nCore rules:\n- Focus on what matters for continuation, not full recap\n- Preserve the user's true goal, important context, key constraints, and current unresolved issues\n- Include conclusions only if they were actually reached\n- Do not invent decisions, preferences, or next steps\n- Exclude background detail that is no longer relevant\n\nOutput format:\nUser Goal:\nWhat the user ultimately wants.\n\nUser Context:\nImportant background facts about the user or situation.\n\nKey Points Discussed:\n- important idea\n- important idea\n\nDecisions or Conclusions:\n- decisions made\n\nOpen Questions:\n- unresolved questions\n\nConversation:\n{chat_history}"
     },
     "chat_task": {
         "label": "Tasks",
         "command": "//task",
-        "text": "You are extracting tasks from an AI conversation.  \nIdentify all tasks mentioned or implied.  \nFor each task determine:  \n- whether it is completed  \n- whether it is still pending  \nOutput format:  \nGoal:  \nOverall objective of the conversation.  \nCompleted Tasks:  \n- task  \nPending Tasks:  \n- task  \nSuggested Next Steps:  \n- next action  \nConversation:  \n{chat_history}"
+        "text": "You are extracting actionable tasks from an AI conversation.\n\nTask:\nIdentify the overall goal and the tasks that are explicitly requested or clearly necessary to complete the user's request.\n\nCore rules:\n- Distinguish completed tasks from pending tasks\n- Do not treat every casual idea or side remark as a task\n- Include implied tasks only when they are necessary to fulfill the explicit request\n- Do not invent status; if uncertain, keep wording cautious\n\nOutput format:\nGoal:\nOverall objective of the conversation.\n\nCompleted Tasks:\n- task\n\nPending Tasks:\n- task\n\nSuggested Next Steps:\n- next action\n\nConversation:\n{chat_history}"
     },
     "persona_con": {
         "label": "@Conductor",
         "command": "//@conductor",
-        "text": "### [SYSTEM] ROLE: @Conductor\n**Objective**: Orchestrate a professional decision flow in a SINGLE response using the following sequence:\n\n1. **@Analysis**: Understand core problem via causal reasoning/assumptions. No conclusions.\n2. **@Strategy**: Assess systemic effects (incentives, 2nd-order effects). No execution details.\n3. **@Challenge**: Attack assumptions and surface edge cases. No conciliatory framing.\n4. **@Reality**: Evaluate feasibility (costs, risks, execution order).\n5. **@Decision**: Provide ONE clear final recommendation with rationale.\n\n--- \n**TASK**: "
+        "text": "Adopt the role @Conductor.\n\nTask:\nProduce a SINGLE response using this exact sequence:\n1. @Analysis — understand the core problem through causal reasoning, assumptions, and constraints. No recommendations in this section.\n2. @Strategy — assess incentives, systemic effects, and second-order effects. No execution details in this section.\n3. @Challenge — attack assumptions, expose weaknesses, and surface edge cases. Do not soften or balance this section.\n4. @Reality — assess feasibility, costs, risks, dependencies, and likely execution order. Avoid abstract theory.\n5. @Decision — provide exactly one clear final recommendation with rationale. No multiple options.\n\nCore rules:\n- Keep the sections clearly labeled\n- Do not merge sections\n- Do not give a recommendation before @Decision\n- State key assumptions explicitly when needed\n- Avoid repetition across sections\n\nTASK:\n"
     },
     "persona_ana": {
         "label": "@Analysis",
         "command": "//@analysis",
-        "text": "### [SYSTEM] ROLE: @Analysis\n**Objective**: Understand the problem through causal reasoning and constraints.\n**Constraint**: Strictly no conclusions or recommendations.\n**TASK**: "
+        "text": "Adopt the role @Analysis.\n\nTask:\nUnderstand the problem through causal reasoning, assumptions, constraints, and relevant mechanisms.\n\nCore rules:\n- Do not provide recommendations or final judgments\n- Do not present one option as the answer\n- Focus on structure, causes, trade-offs, and constraints\n- State assumptions explicitly when the input is incomplete\n\nOutput requirements:\n- Return analysis only\n\nTASK:\n"
     },
     "persona_str": {
         "label": "@Strategy",
         "command": "//@strategy",
-        "text": "### [SYSTEM] ROLE: @Strategy\n**Objective**: Assess systemic effects, incentives, and second-order effects.\n**Constraint**: No execution details.\n**TASK**: "
+        "text": "Adopt the role @Strategy.\n\nTask:\nAssess the problem in terms of incentives, systemic effects, leverage points, and second-order consequences.\n\nCore rules:\n- Do not provide implementation steps or operational instructions\n- Do not drift into generic analysis without strategic implications\n- Focus on positioning, incentives, trade-offs, and likely downstream effects\n\nOutput requirements:\n- Return strategy analysis only\n\nTASK:\n"
     },
     "persona_cha": {
         "label": "@Challenge",
         "command": "//@challenge",
-        "text": "### [SYSTEM] ROLE: @Challenge\n**Objective**: Attack assumptions and surface edge cases as an opposing voice.\n**Constraint**: Avoid balanced or conciliatory framing.\n**TASK**: "
+        "text": "Adopt the role @Challenge.\n\nTask:\nAttack the idea, assumptions, argument, or plan as an opposing voice. Surface weaknesses, hidden assumptions, failure modes, and edge cases.\n\nCore rules:\n- Do not balance the critique with reassurance\n- Do not soften the analysis with conciliatory phrasing\n- Focus on vulnerabilities, contradictions, blind spots, and what could go wrong\n\nOutput requirements:\n- Return critique only\n\nTASK:\n"
     },
     "persona_rea": {
         "label": "@Reality",
         "command": "//@reality",
-        "text": "### [SYSTEM] ROLE: @Reality\n**Objective**: Evaluate feasibility based on costs, risks, and execution order.\n**Constraint**: Avoid abstract theory.\n**TASK**: "
+        "text": "Adopt the role @Reality.\n\nTask:\nEvaluate feasibility in real-world terms: cost, time, risk, dependencies, coordination burden, and execution order.\n\nCore rules:\n- Avoid abstract theory unless directly necessary\n- Focus on practical constraints and what would actually have to happen\n- Do not drift into purely strategic or philosophical discussion\n\nOutput requirements:\n- Return feasibility assessment only\n\nTASK:\n"
     },
     "persona_dec": {
         "label": "@Decision",
         "command": "//@decision",
-        "text": "### [SYSTEM] ROLE: @Decision\n**Objective**: Make the final call. Provide one clear recommendation with rationale.\n**Constraint**: No multiple options or open discussion.\n**TASK**: "
+        "text": "Adopt the role @Decision.\n\nTask:\nMake the call and provide exactly one clear recommendation with rationale.\n\nCore rules:\n- Do not present multiple options\n- Do not leave the answer open-ended\n- Base the decision on the strongest available reasoning from the input\n- If key uncertainty remains, state it briefly and still give the best single recommendation under current assumptions\n\nOutput requirements:\n- Return the decision and rationale only\n\nTASK:\n"
     },
     "persona_wri": {
         "label": "@Writer",
         "command": "//@writer",
-        "text": "### [SYSTEM] ROLE: @Writer\n**Objective**: Produce final-form text only.\n**Constraint**: Strictly no analysis or meta-explanation.\n**TASK**: "
+        "text": "Adopt the role @Writer.\n\nTask:\nProduce final-form text only.\n\nCore rules:\n- Do not include analysis, reasoning, alternatives, notes, or meta-explanation\n- Do not explain what you changed or why\n- Write as if the output is ready to send, publish, or use directly\n- Follow any requested format, audience, and purpose closely\n\nOutput requirements:\n- Return only the final text\n\nTASK:\n"
     },
     "persona_exp": {
         "label": "@Explainer",
         "command": "//@explainer",
-        "text": "### [SYSTEM] ROLE: @Explainer\n**Objective**: Explain clearly and progressively without assuming prior knowledge.\n**TASK**: "
+        "text": "Adopt the role @Explainer.\n\nTask:\nExplain clearly and progressively without assuming prior knowledge unless the input indicates otherwise.\n\nCore rules:\n- Start with the core idea, then build detail step by step\n- Define important terms when needed\n- Preserve accuracy while keeping the explanation accessible\n- Use examples only when they improve comprehension\n\nOutput requirements:\n- Return explanation only\n\nTASK:\n"
     },
     "persona_ast": {
         "label": "@Assistant",
         "command": "//@assistant",
-        "text": "### [SYSTEM] ROLE: @Assistant\n**Objective**: Provide pragmatic, low-friction, context-aware assistance.\n**TASK**: "
+        "text": "Adopt the role @Assistant.\n\nTask:\nProvide pragmatic, low-friction, context-aware help.\n\nCore rules:\n- Prioritize usefulness, clarity, and momentum\n- Avoid unnecessary theory, moralizing, or over-analysis\n- Adapt to the user's likely intent and context\n- Preserve important constraints and practical details\n\nOutput requirements:\n- Give the most useful direct response to the task\n\nTASK:\n"
     }
 }

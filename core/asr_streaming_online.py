@@ -11,6 +11,7 @@ class StreamingOnlineASRWorker(BaseASRWorker):
     def __init__(self, audio_provider, model_config, **callbacks):
         self.is_in_speech = False
         self.last_speech_time = time.time()
+        self.current_segment_started_at = None
         self.last_partial_text = ""
         self.last_partial_change_time = time.time()
         self.has_previewed_punct = False
@@ -18,6 +19,19 @@ class StreamingOnlineASRWorker(BaseASRWorker):
         self.vad = None
         self.punct = None
         self.stream = None
+        self.segmentation = model_config.get("segmentation", {})
+        self.segment_tail_silence = float(
+            self.segmentation.get(
+                "vad_tail_silence",
+                model_config.get("vad", {}).get("min_silence_duration", 1.2),
+            )
+        )
+        self.max_single_segment_time = float(
+            self.segmentation.get(
+                "max_single_segment_time",
+                model_config.get("vad", {}).get("max_speech_duration", 0.0),
+            )
+        )
         super().__init__(audio_provider, model_config, **callbacks)
         self._load_models()
 
@@ -84,6 +98,7 @@ class StreamingOnlineASRWorker(BaseASRWorker):
         self.stream = self.recognizer.create_stream()
         self.is_in_speech = False
         self.last_speech_time = time.time()
+        self.current_segment_started_at = None
         self.last_partial_text = ""
         self.last_partial_change_time = time.time()
         self.has_previewed_punct = False
@@ -115,8 +130,9 @@ class StreamingOnlineASRWorker(BaseASRWorker):
                 self._accept_stream_chunk(chunk_array)
             else:
                 self.vad.accept_waveform(chunk_array)
+                if self.vad.is_speech_detected():
+                    self._accept_stream_chunk(chunk_array)
                 while not self.vad.empty():
-                    self._accept_stream_chunk(self.vad.front.samples)
                     self.vad.pop()
 
             self._check_finalization()
@@ -124,6 +140,7 @@ class StreamingOnlineASRWorker(BaseASRWorker):
     def _accept_stream_chunk(self, samples):
         if not self.is_in_speech:
             self._log("[Speech] Start")
+            self.current_segment_started_at = time.time()
         self.is_in_speech = True
         self.last_speech_time = time.time()
 
@@ -152,14 +169,31 @@ class StreamingOnlineASRWorker(BaseASRWorker):
 
         if self.recognizer.is_endpoint(self.stream):
             self._log("[Endpoint] Semantic boundary detected")
-            self._check_finalization(force=True)
+            self._check_finalization(force=True, reason="endpoint")
 
-    def _check_finalization(self, force=False):
+    def _check_finalization(self, force=False, apply_punctuation=None, reason="silence"):
         is_silence = self.vad is not None and not self.vad.is_speech_detected()
         silence_duration = time.time() - self.last_speech_time
-        silence_trigger = is_silence and silence_duration > 1.2
+        silence_trigger = is_silence and silence_duration >= self.segment_tail_silence
+        duration_trigger = (
+            self.is_in_speech
+            and self.max_single_segment_time > 0
+            and self.current_segment_started_at is not None
+            and (time.time() - self.current_segment_started_at) >= self.max_single_segment_time
+        )
 
-        if self.is_in_speech and (force or silence_trigger):
+        if self.is_in_speech and (force or silence_trigger or duration_trigger):
+            if duration_trigger and not force:
+                reason = "segment_limit"
+                self._log(
+                    f"[Cut] Max single segment time reached: {self.max_single_segment_time:.1f}s"
+                )
+            elif silence_trigger and not force:
+                reason = "silence"
+
+            if apply_punctuation is None:
+                apply_punctuation = True
+
             padding = np.zeros(int(self.sample_rate * 0.8), dtype=np.float32)
             self.stream.accept_waveform(self.sample_rate, padding)
 
@@ -175,12 +209,12 @@ class StreamingOnlineASRWorker(BaseASRWorker):
             text = (result if isinstance(result, str) else result.text).strip()
 
             if text:
-                if self.punct:
+                if apply_punctuation and self.punct:
                     try:
                         text = self.punct.add_punctuation(text).strip()
                     except Exception:
                         pass
-                self._log(f"[FINAL] {text}")
+                self._log(f"[FINAL:{reason}] {text}")
                 if self.on_final_result:
                     self.on_final_result(text)
 

@@ -12,6 +12,10 @@
       "recognizer_kind": "paraformer",
       "sample_rate": 16000,
       "feature_dim": 80,
+      "segmentation": {
+        "vad_tail_silence": 0.6,
+        "max_single_segment_time": 12.0
+      },
       "paths": {
         "encoder": "models/sherpa-onnx-streaming-paraformer-bilingual-zh-en/encoder.int8.onnx",
         "decoder": "models/sherpa-onnx-streaming-paraformer-bilingual-zh-en/decoder.int8.onnx",
@@ -21,8 +25,9 @@
         "enabled": true,
         "model": "models/silero_vad.onnx",
         "threshold": 0.4,
-        "min_silence_duration": 0.5,
+        "min_silence_duration": 0.6,
         "min_speech_duration": 0.25,
+        "max_speech_duration": 12.0,
         "buffer_size_in_seconds": 60
       },
       "punct": {
@@ -71,13 +76,13 @@
         "enabled": true,
         "model": "models/silero_vad.onnx",
         "threshold": 0.4,
-        "min_silence_duration": 0.7,
+        "min_silence_duration": 2.0,
         "min_speech_duration": 0.25,
-        "max_speech_duration": 8.0,
+        "max_speech_duration": 30.0,
         "buffer_size_in_seconds": 100
       },
       "punct": {
-        "enabled": true,
+        "enabled": false,
         "model": "models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/model.onnx",
         "num_threads": 2
       },
@@ -120,13 +125,13 @@
         "enabled": true,
         "model": "models/silero_vad.onnx",
         "threshold": 0.4,
-        "min_silence_duration": 0.7,
+        "min_silence_duration": 2.0,
         "min_speech_duration": 0.25,
-        "max_speech_duration": 8.0,
+        "max_speech_duration": 30.0,
         "buffer_size_in_seconds": 100
       },
       "punct": {
-        "enabled": true,
+        "enabled": false,
         "model": "models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12/model.onnx",
         "num_threads": 2
       },

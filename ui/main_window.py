@@ -221,7 +221,7 @@ class AIInputBox(QMainWindow):
             self._pending_close = True
             self.request_stop_and_copy.emit()
         else:
-            self.copy_and_hide()
+            self.finish_and_copy()
 
     def _save_to_history(self, text):
         if not get_history_enabled():
@@ -262,19 +262,28 @@ class AIInputBox(QMainWindow):
 
     def on_engine_finished(self):
         if self._pending_close:
-            QTimer.singleShot(100, self.copy_and_hide)
+            QTimer.singleShot(100, self.finish_and_copy)
 
-    def copy_and_hide(self):
+    def finish_and_copy(self):
         text = self.text_edit.toPlainText().strip()
+        
+        # Yield focus without hiding the window.
+        # We clear local focus, deactivate the window state, and lower it.
+        # On many WMS, this will allow the previous window to regain focus 
+        # while keeping this window visible (since it has StaysOnTop flag).
+        self.text_edit.clearFocus()
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowActive)
+        self.lower()
+        
         if text:
             QApplication.clipboard().setText(text)
             try: pyperclip.copy(text)
             except: pass
-            self.hide()
-            QTimer.singleShot(200, lambda: self._simulate_paste())
+            
+            # Simulate paste into the window that regained focus
+            QTimer.singleShot(250, lambda: self._simulate_paste())
             self._save_to_history(text)
-        else:
-            self.hide()
+            
         self.clear_text()
         self._pending_close = False
 
@@ -451,15 +460,34 @@ class AIInputBox(QMainWindow):
         return False
 
     def update_text(self, text, is_final=False):
+        if not text: return
         self._asr_updating = True
         try:
+            cursor = self.text_edit.textCursor()
+            
+            # Handle previous partial result replacement
+            if hasattr(self, "_partial_marker") and self._partial_marker:
+                start_pos, length = self._partial_marker
+                cursor.setPosition(start_pos)
+                # Select the partial text
+                for _ in range(length):
+                    cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor)
+                cursor.removeSelectedText()
+                self._partial_marker = None
+
             if is_final:
-                if text: self.committed_text = self._smart_join(self.committed_text, text)
-                self.text_edit.setPlainText(self.committed_text)
+                cursor.insertText(text)
+                self._partial_marker = None
+                # Auto-scroll if at the bottom
+                self.text_edit.verticalScrollBar().setValue(self.text_edit.verticalScrollBar().maximum())
             else:
-                display_text = self._smart_join(self.committed_text, text)
-                self.text_edit.setPlainText(display_text)
-            self.text_edit.verticalScrollBar().setValue(self.text_edit.verticalScrollBar().maximum())
+                start_pos = cursor.position()
+                cursor.insertText(text)
+                self._partial_marker = (start_pos, len(text))
+                # Restore cursor position after the partial insertion
+                self.text_edit.setTextCursor(cursor)
+                
+            self.committed_text = self.text_edit.toPlainText()
         finally:
             self._asr_updating = False
 
