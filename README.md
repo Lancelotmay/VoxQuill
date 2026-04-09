@@ -26,8 +26,10 @@ VoxQuill provides a floating interface to capture voice input and sync the trans
   - Auto-Recording: Features built-in Voice Activity Detection (VAD) to start recording immediately upon being summoned. Supports `sensevoice small` (multilingual: ZH, EN, JA, KO).
   - Manual Editing: Transcription results are displayed in the input box for manual refinement before pasting.
 - **Automated Text Injection**:
-  - **X11 Environment**: Pressing Esc simulates a paste (`Ctrl+V`) into the previously active window (via `pynput`). Note: X11 support is theoretical and has not been formally tested.
-  - **Wayland Environment**: Due to security restrictions, the program attempts to simulate paste via `evdev/uinput` or `wtype`. If these fail, manual `Ctrl+V` is required.
+  - **Submit Shortcut (`Ctrl+Enter`)**: Copies the current editor contents to the clipboard, returns focus to the previously active window, and attempts to paste there automatically.
+  - **X11 Environment**: Automatic paste falls back to `pynput`. Note: X11 support is theoretical and has not been formally tested.
+  - **Wayland Environment**: The program now tries the XDG Desktop Portal RemoteDesktop path first for keyboard injection, then falls back to `wtype` or `evdev/uinput` only if portal injection is unavailable or denied. If all methods fail, manual `Ctrl+V` is required.
+  - **Recording Shortcut (`Esc`)**: Toggles recording on and off without submitting text.
 - **AI Prompt Workflow**:
   - Predefined Templates: Quickly insert preset prompt texts via the UI.
   - In-place Expansion: Detects specific command prefixes (e.g., `//s`) and expands them into full prompt templates automatically.
@@ -48,6 +50,13 @@ Ensure you have completed the [Installation Guide](#installation-guide) first.
 
     ```bash
     python3 main.py
+    ```
+
+   By default on Wayland, VoxQuill now prefers native Wayland Qt mode so focus handoff and portal paste stay in the same windowing model.
+   If you need the older XWayland compatibility mode for troubleshooting, start it with:
+
+    ```bash
+    VOXQUILL_FORCE_XCB=1 python3 main.py
     ```
 
 3. **Configure Global Hotkey (Recommended)**:
@@ -71,22 +80,30 @@ Custom behaviors are managed via JSON files in the `config/` directory:
 - **`config/prompts.json`**:
   - Definition of AI prompt templates.
   - Command prefix mappings (e.g., mapping `//s` to a complex system role).
+- **`config/shortcuts.json`**:
+  - Default and user-editable UI shortcut bindings.
+  - Shortcut handlers now route through named actions, so future UI-based shortcut editing can reuse the same action registry.
 
 ---
 
-## Esc Key: Auto-Save & History
+## Submit Shortcut: Clipboard, Focus Return, and History
 
-The **Esc Key** is central to the "Confirm and Close" logic. Pressing Esc triggers the following sequence:
+The **Ctrl+Enter** shortcut is the central "submit current text" action. Pressing it triggers the following sequence:
 
-1. **Stop Recording**: Terminates the current audio capture.
+1. **Stop Recording**: If recording is active, the app stops capture first and freezes the final text.
 2. **Clipboard Sync**: Copies the current text buffer to the system clipboard.
-3. **Hide Window**: UI closes immediately to reduce visual friction.
+3. **Return Focus**: The floating editor yields focus back to the previously active application window.
 4. **Local Archiving (History Logging)**:
     - Text is automatically appended to a history file.
     - Default directory: `~/Documents/VoxQuill/History` (Adjustable in `models.json`).
     - File format: Monthly Markdown files (e.g., `2026-03vox.md`).
     - Entry format: ISO timestamps and daily headings to record every entry.
 5. **Simulated Paste**: Automatically executes a paste command into the target window in supported environments.
+   - On GNOME/Wayland, the app first attempts the XDG Desktop Portal RemoteDesktop path and reuses/restores sessions when possible.
+   - If automatic paste still fails after fallback attempts, the app shows a confirmation dialog and keeps the text in the clipboard for manual `Ctrl+V`.
+6. **Clear Input**: Clears the floating editor after a non-empty submit.
+
+The **Esc** key no longer submits text. It now only toggles recording on and off.
 
 ---
 

@@ -27,3 +27,16 @@ def get_models_dir():
     # In production, models are huge, so maybe ~/.local/share/VoxQuill/models
     # For now, we'll keep it in the project root
     return os.path.join(get_root_dir(), "models")
+
+
+def get_state_dir():
+    """Get the directory for user-local runtime state."""
+    xdg_state_home = os.environ.get("XDG_STATE_HOME")
+    if xdg_state_home:
+        return os.path.join(xdg_state_home, "VoxQuill")
+    return os.path.join(os.path.expanduser("~/.local/state"), "VoxQuill")
+
+
+def get_state_path(filename):
+    """Get the absolute path to a state file."""
+    return os.path.join(get_state_dir(), filename)

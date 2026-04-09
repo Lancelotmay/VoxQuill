@@ -3,27 +3,52 @@ import json
 import re
 import time
 import subprocess
-import pyperclip
+import threading
+try:
+    import pyperclip
+except ImportError:
+    pyperclip = None
 try:
     import evdev
     from evdev import UInput, ecodes
 except ImportError:
     evdev = None
-from pynput.keyboard import Controller, Key
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel, QApplication, QMenu
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QObject, QTimer, QSize, QEvent
-from PyQt6.QtGui import QShortcut, QKeySequence, QTextCursor, QCursor, QIcon
+    UInput = None
+    ecodes = None
+try:
+    from pynput.keyboard import Controller, Key
+except Exception:
+    Controller = None
+    Key = None
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTextEdit,
+    QPushButton,
+    QApplication,
+    QMenu,
+    QMessageBox,
+)
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize, QEvent
+from PyQt6.QtGui import QTextCursor, QCursor, QIcon
 from core.asr_config import list_available_models, load_asr_config, get_history_dir, get_history_enabled
 from core.logging_utils import log
+from core.wayland_portal import WaylandPortalKeyboard, PasteAttemptResult
 from ui.style import apply_surface_shadow
 from ui.model_manager import ModelManagerDialog
 from core.path_utils import get_resource_path, get_config_path
+from ui.actions import ActionDefinition, ActionRegistry
+from ui.shortcut_bindings import ShortcutBindingManager
 from datetime import datetime
 
 class AIInputBox(QMainWindow):
-    request_stop_and_copy = pyqtSignal()
+    request_stop_and_submit = pyqtSignal()
+    request_toggle_recording = pyqtSignal()
+    portal_paste_finished = pyqtSignal(int, object)
 
-    def __init__(self):
+    def __init__(self, shortcut_config_path=None):
         super().__init__()
         # Ensure it stays on top and is tool-like
         self.setWindowFlags(
@@ -36,12 +61,18 @@ class AIInputBox(QMainWindow):
         self.is_recording = False
         self.committed_text = ""
         self._asr_updating = False
-        self._pending_close = False 
+        self._pending_submit = False
         self._prompts = {}
         self._models = []
         self._resize_margin = 4
-        self.keyboard = Controller()
-        
+        self.keyboard = Controller() if Controller else None
+        self.portal_keyboard = WaylandPortalKeyboard()
+        self._portal_paste_inflight = False
+        self._portal_paste_started_at = 0.0
+        self._portal_paste_attempt_id = 0
+        self._action_registry = ActionRegistry()
+        self._shortcut_manager = ShortcutBindingManager(config_path=shortcut_config_path or get_config_path("shortcuts.json"))
+
         self._load_prompts()
         self._load_models()
         
@@ -52,7 +83,8 @@ class AIInputBox(QMainWindow):
         self.recording_icon = QIcon(get_resource_path("resource/main_small_color_256.png"))
         
         self._setup_ui()
-        self._setup_shortcuts()
+        self._setup_actions()
+        self.portal_paste_finished.connect(self._on_portal_paste_finished)
         self.center_on_screen()
 
     def center_on_screen(self):
@@ -140,7 +172,7 @@ class AIInputBox(QMainWindow):
         self.model_button = QPushButton()
         self.model_button.setObjectName("ModelButton")
         self.model_button.setToolTip("Open model manager")
-        self.model_button.clicked.connect(self._open_model_manager)
+        self.model_button.clicked.connect(lambda: self.trigger_action("open_model_manager", source="button"))
         header_layout.addWidget(self.model_button)
         
         header_layout.addSpacing(4)
@@ -151,7 +183,7 @@ class AIInputBox(QMainWindow):
             btn = QPushButton(p_data["label"])
             btn.setObjectName("CommandButton")
             btn.setToolTip(f"Command: {p_data['command']}")
-            btn.clicked.connect(lambda checked, text=p_data["text"]: self._insert_prompt(text))
+            btn.clicked.connect(lambda checked, text=p_data["text"]: self._run_insert_prompt_action(text, source="button"))
             header_layout.addWidget(btn)
         
         # Unified menu for additional commands
@@ -163,7 +195,9 @@ class AIInputBox(QMainWindow):
             for p_id, p_data in list(self._prompts.items())[9:]:
                 action = self.menu.addAction(p_data["label"])
                 action.setToolTip(f"Command: {p_data['command']}")
-                action.triggered.connect(lambda checked, text=p_data["text"]: self._insert_prompt(text))
+                action.triggered.connect(
+                    lambda checked, text=p_data["text"]: self._run_insert_prompt_action(text, source="menu")
+                )
             
             self.more_button.setMenu(self.menu)
             header_layout.addWidget(self.more_button)
@@ -173,7 +207,7 @@ class AIInputBox(QMainWindow):
         self.close_button = QPushButton("×")
         self.close_button.setObjectName("CloseButton")
         self.close_button.setFixedSize(26, 26)
-        self.close_button.clicked.connect(self.hide)
+        self.close_button.clicked.connect(lambda: self.trigger_action("hide_window", source="button"))
         header_layout.addWidget(self.close_button)
         
         main_layout.addWidget(self.header_bar)
@@ -212,16 +246,63 @@ class AIInputBox(QMainWindow):
         self.surface.installEventFilter(self)
         self.refresh_model_selector()
 
-    def _setup_shortcuts(self):
-        self.esc_shortcut = QShortcut(QKeySequence("Esc"), self)
-        self.esc_shortcut.activated.connect(self._on_esc_pressed)
+    def _setup_actions(self):
+        self._action_registry.register(
+            ActionDefinition(
+                action_id="submit_text",
+                display_name="Submit Text",
+                handler=self._handle_submit_action,
+                default_shortcuts=("Ctrl+Return", "Ctrl+Enter"),
+            )
+        )
+        self._action_registry.register(
+            ActionDefinition(
+                action_id="toggle_recording",
+                display_name="Toggle Recording",
+                handler=self._handle_toggle_recording_action,
+                default_shortcuts=("Esc",),
+            )
+        )
+        self._action_registry.register(
+            ActionDefinition(
+                action_id="open_model_manager",
+                display_name="Open Model Manager",
+                handler=self._open_model_manager,
+                default_shortcuts=("Ctrl+M",),
+            )
+        )
+        self._action_registry.register(
+            ActionDefinition(
+                action_id="hide_window",
+                display_name="Hide Window",
+                handler=self.hide,
+                default_shortcuts=(),
+                user_configurable=False,
+            )
+        )
+        self._shortcut_manager.set_actions(self._action_registry.definitions())
+        self._shortcut_manager.apply_to_window(self, self.trigger_action)
 
-    def _on_esc_pressed(self):
+    @property
+    def action_registry(self):
+        return self._action_registry
+
+    @property
+    def shortcut_manager(self):
+        return self._shortcut_manager
+
+    def trigger_action(self, action_id, source="unknown"):
+        return self._action_registry.trigger(action_id, source=source)
+
+    def _handle_toggle_recording_action(self):
+        self.request_toggle_recording.emit()
+
+    def _handle_submit_action(self):
         if self.is_recording:
-            self._pending_close = True
-            self.request_stop_and_copy.emit()
+            self._pending_submit = True
+            self.request_stop_and_submit.emit()
         else:
-            self.finish_and_copy()
+            self.submit_text()
 
     def _save_to_history(self, text):
         if not get_history_enabled():
@@ -261,77 +342,189 @@ class AIInputBox(QMainWindow):
             log(f"UI: Error saving to history: {e}")
 
     def on_engine_finished(self):
-        if self._pending_close:
-            QTimer.singleShot(100, self.finish_and_copy)
+        if self._pending_submit:
+            QTimer.singleShot(100, self.submit_text)
 
-    def finish_and_copy(self):
-        text = self.text_edit.toPlainText().strip()
-        
+    def _return_focus_to_previous_window(self):
         # Yield focus without hiding the window.
         # We clear local focus, deactivate the window state, and lower it.
-        # On many WMS, this will allow the previous window to regain focus 
-        # while keeping this window visible (since it has StaysOnTop flag).
+        # On many WMs, this lets the previously focused window become active again.
         self.text_edit.clearFocus()
         self.setWindowState(self.windowState() & ~Qt.WindowState.WindowActive)
         self.lower()
-        
+
+    def submit_text(self):
+        text = self.text_edit.toPlainText().strip()
+
+        self._return_focus_to_previous_window()
+
         if text:
             QApplication.clipboard().setText(text)
-            try: pyperclip.copy(text)
-            except: pass
-            
-            # Simulate paste into the window that regained focus
-            QTimer.singleShot(250, lambda: self._simulate_paste())
+            if pyperclip:
+                try:
+                    pyperclip.copy(text)
+                except Exception as e:
+                    log(f"UI: pyperclip failed: {e}")
+
+            QTimer.singleShot(250, self._simulate_paste)
             self._save_to_history(text)
-            
-        self.clear_text()
-        self._pending_close = False
+
+            self.clear_text()
+
+        self._pending_submit = False
 
     def _simulate_paste(self):
-        # Use Wayland-aware tools to bypass XWayland input isolation
         is_wayland = "WAYLAND_DISPLAY" in os.environ
         if is_wayland:
-            # 1. Try wtype (Compositor protocol - works on Sway/KDE, denied on GNOME)
-            try:
-                subprocess.run(["wtype", "-M", "ctrl", "v", "-m", "ctrl"], check=True)
-                log("UI: Paste simulated via wtype (Wayland)")
+            if self.portal_keyboard.is_available():
+                self._start_portal_paste_async()
                 return
-            except Exception as e:
-                log(f"UI: wtype failed: {e}")
 
-            # 2. Try evdev (Kernel level - robust fallback for GNOME if permissions allow)
-            if evdev:
-                try:
-                    # Define the keys we intend to use
-                    cap = {
-                        ecodes.EV_KEY: [ecodes.KEY_LEFTCTRL, ecodes.KEY_V]
-                    }
-                    with UInput(cap, name="VoxQuill-Virtual-KB") as ui:
-                        # Wait a tiny bit for the OS to register the new device
-                        time.sleep(0.005) 
-                        # Press Ctrl
-                        ui.write(ecodes.EV_KEY, ecodes.KEY_LEFTCTRL, 1)
-                        # Press and release V
-                        ui.write(ecodes.EV_KEY, ecodes.KEY_V, 1)
-                        ui.write(ecodes.EV_KEY, ecodes.KEY_V, 0)
-                        # Release Ctrl
-                        ui.write(ecodes.EV_KEY, ecodes.KEY_LEFTCTRL, 0)
-                        ui.syn()
-                        log("UI: Paste simulated via evdev (Wayland/uinput)")
-                        return
-                except Exception as e:
-                    log(f"UI: evdev failed: {e}")
+            self._handle_failed_paste_attempt(
+                PasteAttemptResult(success=False, method_used="portal", error_message="Portal backend unavailable")
+            )
+            return
+
+        result = self._simulate_x11_paste()
+        if not result.success:
+            self._show_paste_failure_dialog(result.error_message or "Paste failed")
+
+    def _start_portal_paste_async(self):
+        if self._portal_paste_inflight:
+            if self._portal_paste_is_stale():
+                log("UI: stale portal paste detected, resetting session")
+                self.portal_keyboard.reset_session("stale in-flight portal paste")
+                self._portal_paste_inflight = False
             else:
-                log("UI: evdev not available")
+                log("UI: portal paste already in flight")
+                return
 
-        # Fallback to pynput (X11 only)
+        self._portal_paste_inflight = True
+        self._portal_paste_started_at = time.monotonic()
+        self._portal_paste_attempt_id += 1
+        attempt_id = self._portal_paste_attempt_id
+        QTimer.singleShot(12000, lambda attempt_id=attempt_id: self._check_portal_paste_timeout(attempt_id))
+        log("UI: Starting portal keyboard injection in background")
+
+        def worker():
+            try:
+                result = self.portal_keyboard.paste_ctrl_v(parent_window=self._portal_parent_window_identifier())
+            except Exception as e:
+                log(f"UI: portal keyboard injection failed unexpectedly: {e}")
+                result = PasteAttemptResult(
+                    success=False,
+                    method_used="portal",
+                    should_retry_session=True,
+                    error_message=str(e),
+                )
+            self.portal_paste_finished.emit(attempt_id, result)
+
+        threading.Thread(target=worker, name="portal-paste", daemon=True).start()
+
+    def _portal_paste_is_stale(self):
+        return self._portal_paste_inflight and (time.monotonic() - self._portal_paste_started_at) > 12.0
+
+    def _check_portal_paste_timeout(self, attempt_id):
+        if attempt_id != self._portal_paste_attempt_id or not self._portal_paste_inflight:
+            return
+        if not self._portal_paste_is_stale():
+            return
+
+        log("UI: portal paste timed out in UI watchdog")
+        self.portal_keyboard.reset_session("UI watchdog timeout")
+        self._portal_paste_inflight = False
+        self._handle_failed_paste_attempt(
+            PasteAttemptResult(
+                success=False,
+                method_used="portal",
+                should_retry_session=True,
+                error_message="Portal authorization did not complete in time.",
+            )
+        )
+
+    def _on_portal_paste_finished(self, attempt_id, result):
+        if attempt_id != self._portal_paste_attempt_id:
+            log("UI: ignoring stale portal paste result from older attempt")
+            return
+        self._portal_paste_inflight = False
+        if not result.success:
+            self._handle_failed_paste_attempt(result)
+
+    def _handle_failed_paste_attempt(self, result):
+        log(f"UI: handling failed paste attempt ({result.method_used}): {result.error_message}")
+        fallback_result = self._simulate_wayland_legacy_paste()
+        if not fallback_result.success:
+            self._show_paste_failure_dialog(
+                fallback_result.error_message or result.error_message or "Automatic paste failed"
+            )
+
+    def _simulate_wayland_legacy_paste(self):
+        try:
+            subprocess.run(["wtype", "-M", "ctrl", "v", "-m", "ctrl"], check=True)
+            log("UI: Paste simulated via wtype (Wayland)")
+            return PasteAttemptResult(success=True, method_used="legacy-wtype")
+        except Exception as e:
+            log(f"UI: wtype failed: {e}")
+
+        if evdev and UInput is not None and ecodes is not None:
+            try:
+                cap = {
+                    ecodes.EV_KEY: [ecodes.KEY_LEFTCTRL, ecodes.KEY_V]
+                }
+                with UInput(cap, name="VoxQuill-Virtual-KB") as ui:
+                    time.sleep(0.005)
+                    ui.write(ecodes.EV_KEY, ecodes.KEY_LEFTCTRL, 1)
+                    ui.write(ecodes.EV_KEY, ecodes.KEY_V, 1)
+                    ui.write(ecodes.EV_KEY, ecodes.KEY_V, 0)
+                    ui.write(ecodes.EV_KEY, ecodes.KEY_LEFTCTRL, 0)
+                    ui.syn()
+                    log("UI: Paste simulated via evdev (Wayland/uinput)")
+                    return PasteAttemptResult(success=True, method_used="legacy-evdev")
+            except Exception as e:
+                log(f"UI: evdev failed: {e}")
+        else:
+            log("UI: evdev not available")
+
+        return self._simulate_x11_paste(fallback_label="X11 fallback")
+
+    def _simulate_x11_paste(self, fallback_label="X11"):
+        if not self.keyboard or Key is None:
+            log("UI: pynput keyboard controller unavailable")
+            return PasteAttemptResult(
+                success=False,
+                method_used="manual",
+                error_message="Clipboard updated, but automatic paste is unavailable. Press Ctrl+V manually.",
+            )
+
         try:
             with self.keyboard.pressed(Key.ctrl):
                 self.keyboard.press('v')
                 self.keyboard.release('v')
-            log("UI: Paste simulated via pynput (X11)")
+            log(f"UI: Paste simulated via pynput ({fallback_label})")
+            return PasteAttemptResult(success=True, method_used="legacy-pynput")
         except Exception as e:
             log(f"UI: Paste failed: {e}")
+            return PasteAttemptResult(
+                success=False,
+                method_used="manual",
+                error_message=f"Clipboard updated, but automatic paste failed ({e}). Press Ctrl+V manually.",
+            )
+
+    def _show_paste_failure_dialog(self, message):
+        log("UI: user_visible_failure_dialog_shown")
+        QMessageBox.information(
+            self,
+            "Auto-Paste Failed",
+            f"{message}\n\nThe text is already in the clipboard. Press Ctrl+V manually to paste it.",
+        )
+
+    def _portal_parent_window_identifier(self):
+        if "WAYLAND_DISPLAY" in os.environ:
+            return ""
+        try:
+            return f"x11:{int(self.winId()):x}"
+        except Exception:
+            return ""
 
     def set_recording_state(self, is_recording):
         self.is_recording = is_recording
@@ -359,6 +552,18 @@ class AIInputBox(QMainWindow):
         dialog.models_changed.connect(self.refresh_model_selector)
         dialog.center_on_current_screen()
         dialog.exec()
+
+    def _run_insert_prompt_action(self, prompt_text, source="unknown"):
+        self._action_registry.register(
+            ActionDefinition(
+                action_id="insert_prompt_runtime",
+                display_name="Insert Prompt",
+                handler=lambda prompt_text=prompt_text: self._insert_prompt(prompt_text),
+                default_shortcuts=(),
+                user_configurable=False,
+            )
+        )
+        self.trigger_action("insert_prompt_runtime", source=source)
 
     def _insert_prompt(self, p_text):
         cursor = self.text_edit.textCursor()

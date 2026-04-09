@@ -31,13 +31,21 @@ from ui.style import load_app_stylesheet
 from ui.tray import SystemTrayIcon
 from core.path_utils import get_resource_path
 
-# Wayland positioning bypass: Requires libxcb-cursor0.
-# Without this, GNOME Wayland forbids absolute move() and WindowStaysOnTop.
-if sys.platform == "linux" and "WAYLAND_DISPLAY" in os.environ:
-    # Safe check for the required library to avoid "core dumped" crash.
-    import glob
-    if glob.glob("/usr/lib/**/libxcb-cursor.so.0", recursive=True):
+def configure_qt_platform():
+    # Default to native Wayland so focus handoff and portal-based paste stay in the
+    # same windowing model. XWayland can still be requested explicitly as a fallback.
+    if sys.platform != "linux" or "WAYLAND_DISPLAY" not in os.environ:
+        return
+
+    if os.environ.get("VOXQUILL_FORCE_XCB") == "1":
         os.environ["QT_QPA_PLATFORM"] = "xcb"
+        return
+
+    if "QT_QPA_PLATFORM" not in os.environ:
+        os.environ["QT_QPA_PLATFORM"] = "wayland"
+
+
+configure_qt_platform()
 
 class SignalBridge(QObject):
     partial_result = pyqtSignal(str)
@@ -55,6 +63,12 @@ def main():
     app.setWindowIcon(QIcon(get_resource_path("resource/main_small_color.png")))
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(load_app_stylesheet())
+    log(
+        "Main: Qt platform="
+        f"{QApplication.platformName()} "
+        f"WAYLAND_DISPLAY={'yes' if 'WAYLAND_DISPLAY' in os.environ else 'no'} "
+        f"XDG_SESSION_TYPE={os.environ.get('XDG_SESSION_TYPE', '')!r}"
+    )
     
     bridge = SignalBridge()
     
@@ -163,7 +177,8 @@ def main():
     bridge.final_result.connect(lambda t: window.update_text(t, is_final=True))
     bridge.finished.connect(window.on_engine_finished) # Connect to UI handler
 
-    window.request_stop_and_copy.connect(stop_recording)
+    window.request_stop_and_submit.connect(stop_recording)
+    window.request_toggle_recording.connect(toggle_recording)
 
     def handle_ipc(command):
         if command == "toggle": toggle_recording()
@@ -172,7 +187,7 @@ def main():
         elif command == "hide": window.hide()
 
     bridge.ipc_command.connect(handle_ipc)
-    window.toggle_button.clicked.connect(toggle_recording)
+    window.toggle_button.clicked.connect(lambda: window.trigger_action("toggle_recording", source="button"))
     # window.clear_button.clicked.connect(window.clear_text) # Removed
 
     tray = SystemTrayIcon(window, start_recording, stop_recording, quit_app)

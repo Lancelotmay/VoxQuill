@@ -1,0 +1,12 @@
+{
+  "submit_text": [
+    "Ctrl+Return",
+    "Ctrl+Enter"
+  ],
+  "toggle_recording": [
+    "Esc"
+  ],
+  "open_model_manager": [
+    "Ctrl+M"
+  ]
+}
