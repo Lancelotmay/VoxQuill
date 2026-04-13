@@ -10,7 +10,7 @@ A lightweight, high-performance floating input assistant for Ubuntu Linux design
 4. **Simulated Streaming**: Provides a "real-time" experience by using **Silero VAD v5** for Voice Activity Detection to emit intermediate results as you speak.
 5. **Multi-User Safe**: Robust IPC (Inter-Process Communication) that uses user-specific socket paths (`$XDG_RUNTIME_DIR/aiinputbox.socket`) to prevent collisions on shared systems.
 6. **Global Hotkey Management**: A reliable listener that handles complex modifier groups (Ctrl, Alt, Shift, Super) across X11 and Wayland (via IPC and OS-level binds).
-7. **Input Integration**: Transcribed text is displayed in the floating UI. Pressing **Esc** copies the text to the system clipboard and hides/clears the window.
+7. **Input Integration**: Transcribed text is displayed in the floating UI. Pressing **Ctrl+Enter** copies the text to the system clipboard, returns focus to the previous application, pastes there, and clears the input box. Pressing **Esc** toggles recording.
 8. **Modern Audio Backend**: Compatibility with **PipeWire** (via PulseAudio emulation) for low-latency, cross-device audio capture.
 9. **UI Framework**: PyQt6 with a **Solar** theme.
 

@@ -22,4 +22,4 @@ Finalize the application with a system tray icon, instructions for global hotkey
 ## Success Criteria
 - [ ] Application starts minimized to tray (optional) or with tray visible.
 - [ ] CLI command correctly toggles the UI from a background state.
-- [ ] End-to-end flow: Trigger -> Speak -> Esc -> Paste (Ctrl+V) works flawlessly.
+- [ ] End-to-end flow: Trigger -> Speak -> Ctrl+Enter -> Paste (Ctrl+V) works flawlessly, while Esc only toggles recording.

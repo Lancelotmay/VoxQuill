@@ -17,7 +17,7 @@
   - Implement real-time text display.
 - **Track 4: Clipboard & Text Handling** (`conductor/tracks/004_clipboard/plan.md`)
   - Implement text-to-clipboard logic.
-  - Implement **Esc** key behavior (copy & hide).
+  - Implement **Ctrl+Enter** submit behavior and **Esc** recording toggle.
   - [x] Track 4: Clipboard & Text Handling
   - [x] Track 5: System Integration
 
@@ -30,4 +30,3 @@
   - [x] Track 3: UI Development
   - [x] Track 4: Clipboard & Text Handling
   - [x] Track 5: System Integration
-

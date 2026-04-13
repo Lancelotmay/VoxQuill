@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QFileDialog,
     QCheckBox,
+    QDoubleSpinBox,
 )
 from PyQt6.QtGui import QCursor
 
@@ -32,7 +33,8 @@ from core.asr_config import (
     get_history_enabled,
     set_history_enabled,
 )
-from ui.style import apply_surface_shadow
+from ui.style import apply_surface_shadow, load_app_stylesheet, load_ui_preferences, save_ui_preferences
+from core.path_utils import get_config_path
 
 
 class DownloadWorker(QObject):
@@ -228,6 +230,8 @@ class ModelManagerDialog(QDialog):
         self._download_worker = None
         self._current_download_model_id = None
         self._selected_model_id = load_asr_config()["id"]
+        self._ui_config_path = get_config_path("ui.json")
+        self._ui_preferences = load_ui_preferences(self._ui_config_path)
 
         self.setWindowTitle("Model Manager")
         self.setModal(True)
@@ -296,6 +300,39 @@ class ModelManagerDialog(QDialog):
         self.lang_selector = LanguageSelector()
         self.lang_selector.languages_changed.connect(self._on_global_langs_changed)
         layout.addWidget(self.lang_selector)
+
+        appearance_widget = QWidget()
+        appearance_layout = QHBoxLayout(appearance_widget)
+        appearance_layout.setContentsMargins(0, 4, 0, 4)
+        appearance_layout.setSpacing(8)
+
+        appearance_label = QLabel("Appearance:")
+        appearance_label.setObjectName("LanguageSelectorLabel")
+        appearance_layout.addWidget(appearance_label)
+
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem("Light", "light")
+        self.theme_combo.addItem("Dark", "dark")
+        theme_index = max(0, self.theme_combo.findData(self._ui_preferences["theme"]))
+        self.theme_combo.setCurrentIndex(theme_index)
+        self.theme_combo.currentIndexChanged.connect(self._on_ui_preferences_changed)
+        appearance_layout.addWidget(self.theme_combo)
+
+        opacity_label = QLabel("Inactive opacity:")
+        opacity_label.setObjectName("LanguageSelectorLabel")
+        appearance_layout.addWidget(opacity_label)
+
+        self.inactive_opacity_spin = QDoubleSpinBox()
+        self.inactive_opacity_spin.setRange(0.1, 1.0)
+        self.inactive_opacity_spin.setSingleStep(0.05)
+        self.inactive_opacity_spin.setDecimals(2)
+        self.inactive_opacity_spin.setValue(self._ui_preferences["inactive_opacity"])
+        self.inactive_opacity_spin.valueChanged.connect(self._on_ui_preferences_changed)
+        appearance_layout.addWidget(self.inactive_opacity_spin)
+
+        appearance_layout.addStretch()
+        layout.addWidget(appearance_widget)
+
         history_widget = QWidget()
         history_layout = QVBoxLayout(history_widget)
         history_layout.setContentsMargins(0, 4, 0, 4)
@@ -420,9 +457,29 @@ class ModelManagerDialog(QDialog):
             set_history_dir(new_dir)
             self.status_label.setText(f"History switched to: {new_dir}")
 
+    def _on_ui_preferences_changed(self):
+        self.status_label.setText(
+            f"Appearance: {self.theme_combo.currentData()}, inactive opacity {self.inactive_opacity_spin.value():.2f} (unsaved)"
+        )
+
+    def _current_ui_preferences(self):
+        return {
+            "theme": self.theme_combo.currentData(),
+            "inactive_opacity": self.inactive_opacity_spin.value(),
+        }
+
     def _save_selection(self):
         try:
             set_active_model(self._selected_model_id)
+            preferences = save_ui_preferences(self._current_ui_preferences(), self._ui_config_path)
+            app = QApplication.instance()
+            if app is not None:
+                app.setStyleSheet(load_app_stylesheet(
+                    theme=preferences["theme"],
+                    inactive_opacity=preferences["inactive_opacity"],
+                ))
+            if self.parent() is not None and hasattr(self.parent(), "apply_ui_preferences"):
+                self.parent().apply_ui_preferences(preferences)
             self.models_changed.emit()
             self.accept()
         except Exception as e:

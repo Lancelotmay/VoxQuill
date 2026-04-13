@@ -27,8 +27,9 @@ VoxQuill provides a floating interface to capture voice input and sync the trans
   - Manual Editing: Transcription results are displayed in the input box for manual refinement before pasting.
 - **Automated Text Injection**:
   - **Submit Shortcut (`Ctrl+Enter`)**: Copies the current editor contents to the clipboard, returns focus to the previously active window, and attempts to paste there automatically.
+  - **Direct Input Shortcut (`Ctrl+Shift+Enter`)**: Copies the current editor contents to the clipboard, returns focus to the previous window, and tries to type the text as real keystrokes. This path is better suited for terminals and other targets where `Ctrl+V` paste is unreliable.
   - **X11 Environment**: Automatic paste falls back to `pynput`. Note: X11 support is theoretical and has not been formally tested.
-  - **Wayland Environment**: The program now tries the XDG Desktop Portal RemoteDesktop path first for keyboard injection, then falls back to `wtype` or `evdev/uinput` only if portal injection is unavailable or denied. If all methods fail, manual `Ctrl+V` is required.
+  - **Wayland Environment**: Automatic paste tries the XDG Desktop Portal RemoteDesktop path first, then falls back to `wtype` or `evdev/uinput` only if portal injection is unavailable or denied. The direct-input path prefers `wtype` first and falls back to `pynput` if needed.
   - **Recording Shortcut (`Esc`)**: Toggles recording on and off without submitting text.
 - **AI Prompt Workflow**:
   - Predefined Templates: Quickly insert preset prompt texts via the UI.
@@ -69,6 +70,27 @@ Ensure you have completed the [Installation Guide](#installation-guide) first.
 
 ---
 
+## Interaction Semantics
+
+The app currently revolves around four main states:
+
+- **Hidden**: The floating window is not visible, while the tray icon and IPC endpoint stay available.
+- **VisibleIdle**: The floating window is visible and editable, but not recording.
+- **VisibleRecording**: The floating window is visible and actively capturing speech.
+- **Submitting**: A submit action is in progress, including stop-recording cleanup, clipboard sync, hide/focus handoff, paste/type attempt, and text cleanup.
+
+The current shortcut semantics are:
+
+- **`Esc`**: Only toggles recording on and off.
+- **`Ctrl+Enter` / `Ctrl+Return`**: Submit current text through the clipboard-and-paste path. If recording is active, the app stops recording first and only then continues submission.
+- **`Ctrl+Shift+Enter` / `Ctrl+Shift+Return`**: Submit current text through the direct-typing path, intended for targets where paste is unstable.
+- **Global hotkey bound to `cli.py --command toggle`**: Toggles recording state rather than window visibility. It appears to "summon and record" because recording start also brings the window to the front.
+- **Close button `×`, tray Hide, or IPC `hide`**: Hide the floating window without quitting the process.
+
+The minimum success guarantee remains: the submitted text is already in the system clipboard. Paste/type automation is an enhancement layer; if desktop restrictions block it, manual completion is still possible.
+
+---
+
 ## Configuration
 
 Custom behaviors are managed via JSON files in the `config/` directory:
@@ -83,12 +105,22 @@ Custom behaviors are managed via JSON files in the `config/` directory:
 - **`config/shortcuts.json`**:
   - Default and user-editable UI shortcut bindings.
   - Shortcut handlers now route through named actions, so future UI-based shortcut editing can reuse the same action registry.
+- **`config/ui.json`**:
+  - Stores appearance preferences for the floating window.
+  - Current keys:
+    - `theme`: `light` or `dark`
+    - `inactive_opacity`: opacity used when the window is visible but intentionally not focused
 
 ---
 
-## Submit Shortcut: Clipboard, Focus Return, and History
+## Submit Shortcuts, Focus Return, and History
 
-The **Ctrl+Enter** shortcut is the central "submit current text" action. Pressing it triggers the following sequence:
+The app now supports two submit modes. Both copy the current text into the system clipboard first:
+
+- **`Ctrl+Enter`**: submit by paste
+- **`Ctrl+Shift+Enter`**: submit by direct typing
+
+Pressing either shortcut triggers the following sequence:
 
 1. **Stop Recording**: If recording is active, the app stops capture first and freezes the final text.
 2. **Clipboard Sync**: Copies the current text buffer to the system clipboard.
@@ -98,12 +130,25 @@ The **Ctrl+Enter** shortcut is the central "submit current text" action. Pressin
     - Default directory: `~/Documents/VoxQuill/History` (Adjustable in `models.json`).
     - File format: Monthly Markdown files (e.g., `2026-03vox.md`).
     - Entry format: ISO timestamps and daily headings to record every entry.
-5. **Simulated Paste**: Automatically executes a paste command into the target window in supported environments.
-   - On GNOME/Wayland, the app first attempts the XDG Desktop Portal RemoteDesktop path and reuses/restores sessions when possible.
-   - If automatic paste still fails after fallback attempts, the app shows a confirmation dialog and keeps the text in the clipboard for manual `Ctrl+V`.
+5. **Submit Execution**:
+   - Paste mode attempts an automatic paste into the target window.
+   - Direct-input mode attempts keystroke-level text injection into the target window.
+   - On GNOME/Wayland, paste mode first attempts the XDG Desktop Portal RemoteDesktop path and reuses/restores sessions when possible.
+   - If automation fails after fallback attempts, the app shows a confirmation dialog and keeps the text in the clipboard for manual completion.
 6. **Clear Input**: Clears the floating editor after a non-empty submit.
 
 The **Esc** key no longer submits text. It now only toggles recording on and off.
+
+## Appearance Preferences
+
+Appearance settings are now persisted and applied across launches:
+
+1. Open **Model Manager (`Ctrl+M`)**.
+2. Choose **Light** or **Dark** theme.
+3. Adjust **Inactive opacity** to control how visible the floating window remains after submission while it is shown without focus.
+4. Click **Save & Apply** to persist the change into `config/ui.json` and immediately refresh the app stylesheet.
+
+This makes the "return focus but keep the box visible" behavior configurable instead of hard-coded.
 
 ---
 

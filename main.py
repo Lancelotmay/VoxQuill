@@ -27,9 +27,9 @@ from core.asr_config import ensure_model_ready, load_asr_config, set_active_mode
 from core.ipc import IPCServer
 from core.logging_utils import log
 from ui.main_window import AIInputBox
-from ui.style import load_app_stylesheet
+from ui.style import load_app_stylesheet, load_ui_preferences
 from ui.tray import SystemTrayIcon
-from core.path_utils import get_resource_path
+from core.path_utils import get_resource_path, get_config_path
 
 def configure_qt_platform():
     # Default to native Wayland so focus handoff and portal-based paste stay in the
@@ -62,7 +62,11 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(get_resource_path("resource/main_small_color.png")))
     app.setQuitOnLastWindowClosed(False)
-    app.setStyleSheet(load_app_stylesheet())
+    ui_preferences = load_ui_preferences(get_config_path("ui.json"))
+    app.setStyleSheet(load_app_stylesheet(
+        theme=ui_preferences["theme"],
+        inactive_opacity=ui_preferences["inactive_opacity"],
+    ))
     log(
         "Main: Qt platform="
         f"{QApplication.platformName()} "
@@ -77,7 +81,7 @@ def main():
     asr = None
     
     # 2. Initialize UI
-    window = AIInputBox()
+    window = AIInputBox(ui_config_path=get_config_path("ui.json"))
     
     # 3. Initialize IPC
     ipc = IPCServer(command_handler=lambda c: bridge.ipc_command.emit(c))

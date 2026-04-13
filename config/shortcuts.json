@@ -3,6 +3,10 @@
     "Ctrl+Return",
     "Ctrl+Enter"
   ],
+  "submit_text_direct": [
+    "Ctrl+Shift+Return",
+    "Ctrl+Shift+Enter"
+  ],
   "toggle_recording": [
     "Esc"
   ],

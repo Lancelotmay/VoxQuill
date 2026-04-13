@@ -36,7 +36,7 @@ from PyQt6.QtGui import QTextCursor, QCursor, QIcon
 from core.asr_config import list_available_models, load_asr_config, get_history_dir, get_history_enabled
 from core.logging_utils import log
 from core.wayland_portal import WaylandPortalKeyboard, PasteAttemptResult
-from ui.style import apply_surface_shadow
+from ui.style import apply_surface_shadow, load_ui_preferences
 from ui.model_manager import ModelManagerDialog
 from core.path_utils import get_resource_path, get_config_path
 from ui.actions import ActionDefinition, ActionRegistry
@@ -48,7 +48,7 @@ class AIInputBox(QMainWindow):
     request_toggle_recording = pyqtSignal()
     portal_paste_finished = pyqtSignal(int, object)
 
-    def __init__(self, shortcut_config_path=None):
+    def __init__(self, shortcut_config_path=None, ui_config_path=None):
         super().__init__()
         # Ensure it stays on top and is tool-like
         self.setWindowFlags(
@@ -62,6 +62,7 @@ class AIInputBox(QMainWindow):
         self.committed_text = ""
         self._asr_updating = False
         self._pending_submit = False
+        self._pending_submit_mode = "paste"
         self._prompts = {}
         self._models = []
         self._resize_margin = 4
@@ -70,8 +71,12 @@ class AIInputBox(QMainWindow):
         self._portal_paste_inflight = False
         self._portal_paste_started_at = 0.0
         self._portal_paste_attempt_id = 0
+        self._restore_after_submit_delay_ms = 250
+        self._inactive_visual_state = None
         self._action_registry = ActionRegistry()
         self._shortcut_manager = ShortcutBindingManager(config_path=shortcut_config_path or get_config_path("shortcuts.json"))
+        self._ui_preferences = load_ui_preferences(ui_config_path or get_config_path("ui.json"))
+        self._inactive_opacity = self._ui_preferences["inactive_opacity"]
 
         self._load_prompts()
         self._load_models()
@@ -86,6 +91,7 @@ class AIInputBox(QMainWindow):
         self._setup_actions()
         self.portal_paste_finished.connect(self._on_portal_paste_finished)
         self.center_on_screen()
+        self._update_inactive_visual_state()
 
     def center_on_screen(self):
         screen = QApplication.screenAt(QCursor.pos())
@@ -114,7 +120,9 @@ class AIInputBox(QMainWindow):
         log(f"UI: Positioned window at {x}, {y} with size {width}x{height}")
 
     def bring_to_front(self):
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
         self.show()
+        self._set_inactive_visual_state(False)
         # On Linux, some WMs ignore activateWindow, so we try multiple tricks
         self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive)
         self.raise_()
@@ -122,6 +130,17 @@ class AIInputBox(QMainWindow):
         # Force set focus to text edit
         self.text_edit.setFocus()
         QTimer.singleShot(50, lambda: self.activateWindow())
+
+    def bring_to_front_without_focus(self):
+        self.text_edit.clearFocus()
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        self.show()
+        self.raise_()
+        self._set_inactive_visual_state(True)
+        QTimer.singleShot(0, self._update_inactive_visual_state)
+
+    def _restore_after_submit_without_focus(self):
+        QTimer.singleShot(self._restore_after_submit_delay_ms, self.bring_to_front_without_focus)
 
     def _load_prompts(self):
         config_path = get_config_path("prompts.json")
@@ -257,6 +276,14 @@ class AIInputBox(QMainWindow):
         )
         self._action_registry.register(
             ActionDefinition(
+                action_id="submit_text_direct",
+                display_name="Submit Text Direct",
+                handler=self._handle_submit_direct_action,
+                default_shortcuts=("Ctrl+Shift+Return", "Ctrl+Shift+Enter"),
+            )
+        )
+        self._action_registry.register(
+            ActionDefinition(
                 action_id="toggle_recording",
                 display_name="Toggle Recording",
                 handler=self._handle_toggle_recording_action,
@@ -298,11 +325,18 @@ class AIInputBox(QMainWindow):
         self.request_toggle_recording.emit()
 
     def _handle_submit_action(self):
+        self._handle_submit(mode="paste")
+
+    def _handle_submit_direct_action(self):
+        self._handle_submit(mode="type")
+
+    def _handle_submit(self, mode="paste"):
+        self._pending_submit_mode = mode
         if self.is_recording:
             self._pending_submit = True
             self.request_stop_and_submit.emit()
         else:
-            self.submit_text()
+            self.submit_text(mode=mode)
 
     def _save_to_history(self, text):
         if not get_history_enabled():
@@ -343,17 +377,36 @@ class AIInputBox(QMainWindow):
 
     def on_engine_finished(self):
         if self._pending_submit:
-            QTimer.singleShot(100, self.submit_text)
+            QTimer.singleShot(100, lambda: self.submit_text(mode=self._pending_submit_mode))
 
     def _return_focus_to_previous_window(self):
-        # Yield focus without hiding the window.
-        # We clear local focus, deactivate the window state, and lower it.
-        # On many WMs, this lets the previously focused window become active again.
+        # On Wayland, lowering an always-on-top tool window is often not enough to
+        # return input focus to the previously active application. Hide the window
+        # completely so the compositor can restore focus to another surface.
         self.text_edit.clearFocus()
         self.setWindowState(self.windowState() & ~Qt.WindowState.WindowActive)
-        self.lower()
+        self.hide()
+        log("UI: Hiding window to return focus to previous application")
 
-    def submit_text(self):
+    def _set_inactive_visual_state(self, inactive):
+        if self._inactive_visual_state == inactive:
+            return
+        self._inactive_visual_state = inactive
+        for widget in (self.surface, self.input_container):
+            widget.setProperty("inactive", inactive)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
+
+    def _update_inactive_visual_state(self):
+        self._set_inactive_visual_state((not self.isHidden()) and (not self.isActiveWindow()))
+
+    def apply_ui_preferences(self, preferences):
+        self._ui_preferences = preferences
+        self._inactive_opacity = preferences["inactive_opacity"]
+        self._update_inactive_visual_state()
+
+    def submit_text(self, mode="paste"):
         text = self.text_edit.toPlainText().strip()
 
         self._return_focus_to_previous_window()
@@ -366,14 +419,16 @@ class AIInputBox(QMainWindow):
                 except Exception as e:
                     log(f"UI: pyperclip failed: {e}")
 
-            QTimer.singleShot(250, self._simulate_paste)
+            submit_callback = self._simulate_direct_input if mode == "type" else self._simulate_paste
+            QTimer.singleShot(250, lambda: submit_callback(text))
             self._save_to_history(text)
 
             self.clear_text()
 
         self._pending_submit = False
+        self._pending_submit_mode = "paste"
 
-    def _simulate_paste(self):
+    def _simulate_paste(self, _text=None):
         is_wayland = "WAYLAND_DISPLAY" in os.environ
         if is_wayland:
             if self.portal_keyboard.is_available():
@@ -383,11 +438,20 @@ class AIInputBox(QMainWindow):
             self._handle_failed_paste_attempt(
                 PasteAttemptResult(success=False, method_used="portal", error_message="Portal backend unavailable")
             )
+            self._restore_after_submit_without_focus()
             return
 
         result = self._simulate_x11_paste()
         if not result.success:
             self._show_paste_failure_dialog(result.error_message or "Paste failed")
+        self._restore_after_submit_without_focus()
+
+    def _simulate_direct_input(self, text):
+        is_wayland = "WAYLAND_DISPLAY" in os.environ
+        result = self._simulate_wayland_direct_input(text) if is_wayland else self._simulate_x11_direct_input(text)
+        if not result.success:
+            self._show_paste_failure_dialog(result.error_message or "Direct input failed")
+        self._restore_after_submit_without_focus()
 
     def _start_portal_paste_async(self):
         if self._portal_paste_inflight:
@@ -441,6 +505,7 @@ class AIInputBox(QMainWindow):
                 error_message="Portal authorization did not complete in time.",
             )
         )
+        self._restore_after_submit_without_focus()
 
     def _on_portal_paste_finished(self, attempt_id, result):
         if attempt_id != self._portal_paste_attempt_id:
@@ -449,6 +514,7 @@ class AIInputBox(QMainWindow):
         self._portal_paste_inflight = False
         if not result.success:
             self._handle_failed_paste_attempt(result)
+        self._restore_after_submit_without_focus()
 
     def _handle_failed_paste_attempt(self, result):
         log(f"UI: handling failed paste attempt ({result.method_used}): {result.error_message}")
@@ -510,8 +576,38 @@ class AIInputBox(QMainWindow):
                 error_message=f"Clipboard updated, but automatic paste failed ({e}). Press Ctrl+V manually.",
             )
 
+    def _simulate_wayland_direct_input(self, text):
+        try:
+            subprocess.run(["wtype", text], check=True)
+            log("UI: Text typed via wtype (Wayland)")
+            return PasteAttemptResult(success=True, method_used="type-wtype")
+        except Exception as e:
+            log(f"UI: wtype direct input failed: {e}")
+
+        return self._simulate_x11_direct_input(text, fallback_label="Wayland fallback")
+
+    def _simulate_x11_direct_input(self, text, fallback_label="X11"):
+        if not self.keyboard:
+            log("UI: pynput keyboard controller unavailable for direct input")
+            return PasteAttemptResult(
+                success=False,
+                method_used="manual",
+                error_message="Clipboard updated, but direct typing is unavailable.",
+            )
+
+        try:
+            self.keyboard.type(text)
+            log(f"UI: Text typed via pynput ({fallback_label})")
+            return PasteAttemptResult(success=True, method_used="type-pynput")
+        except Exception as e:
+            log(f"UI: direct typing failed: {e}")
+            return PasteAttemptResult(
+                success=False,
+                method_used="manual",
+                error_message=f"Clipboard updated, but direct typing failed ({e}).",
+            )
+
     def _show_paste_failure_dialog(self, message):
-        log("UI: user_visible_failure_dialog_shown")
         QMessageBox.information(
             self,
             "Auto-Paste Failed",
@@ -609,6 +705,19 @@ class AIInputBox(QMainWindow):
                 return True
                 
         return super().eventFilter(obj, event)
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.ActivationChange:
+            self._update_inactive_visual_state()
+        super().changeEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self._update_inactive_visual_state)
+
+    def hideEvent(self, event):
+        self._set_inactive_visual_state(False)
+        super().hideEvent(event)
 
     def _start_window_drag(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self.windowHandle():
